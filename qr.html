@@ -7,41 +7,77 @@
 <title>Alberto bar · QR меню</title>
 <style>
   :root {
-    --bg: #FAFAF9; --card: #FFFFFF; --ink: #1C1917; --muted: #78716C;
-    --beer: #92400E; --line: rgba(180, 83, 9, 0.15);
-    --font: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    --bg-0: #FDF6EC; --bg-1: #FFFFFF; --ink: #1C1917; --muted: #78716C;
+    --amber: #F59E0B; --beer: #B45309; --beer-deep: #92400E;
+    --line: rgba(180, 83, 9, 0.18);
+    --font: 'Outfit', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
     min-height: 100vh; display: grid; place-items: center; padding: 24px;
-    background: var(--bg); color: var(--ink); font-family: var(--font);
+    font-family: var(--font); color: var(--ink);
+    background:
+      radial-gradient(120% 80% at 50% -10%, rgba(245, 158, 11, 0.16), transparent 60%),
+      linear-gradient(180deg, var(--bg-0), #FBEFD8);
   }
   .card {
-    width: 100%; max-width: 420px; background: var(--card);
-    border: 1px solid var(--line); border-radius: 24px; padding: 32px 28px;
-    text-align: center; box-shadow: 0 8px 32px -8px rgba(180, 83, 9, 0.12);
+    width: 100%; max-width: 400px; background: var(--bg-1);
+    border: 1px solid var(--line); border-radius: 28px; padding: 28px 26px 24px;
+    text-align: center; box-shadow: 0 18px 50px -18px rgba(146, 64, 14, 0.35);
+    position: relative; overflow: hidden;
   }
-  .eyebrow { font-size: 13px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--beer); font-weight: 700; }
-  h1 { margin: 10px 0 4px; font-size: 26px; font-weight: 800; }
-  .sub { color: var(--muted); font-size: 15px; line-height: 1.5; margin-bottom: 24px; }
-  .qr { width: 260px; height: 260px; margin: 0 auto; display: block; }
-  .hint { margin-top: 22px; font-size: 16px; font-weight: 600; }
-  .hint span { color: var(--beer); }
-  .addr { margin-top: 6px; font-size: 13px; color: var(--muted); }
+  .card::before {
+    content: ""; position: absolute; inset: 0 0 auto 0; height: 6px;
+    background: linear-gradient(90deg, var(--amber), var(--beer), var(--amber));
+  }
+  .logo { width: 180px; max-width: 70%; height: auto; margin: 6px auto 14px; display: block; }
+  .eyebrow { font-size: 12px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--beer); font-weight: 700; }
+  h1 { margin: 6px 0 20px; font-size: 23px; font-weight: 800; letter-spacing: -0.01em; }
+
+  .frame { position: relative; width: 264px; max-width: 80%; margin: 0 auto; padding: 16px; }
+  .frame img { width: 100%; height: auto; display: block; border-radius: 10px; }
+  .frame span {
+    position: absolute; width: 26px; height: 26px; border: 3px solid var(--amber);
+  }
+  .frame span.tl { top: 0; left: 0; border-right: none; border-bottom: none; border-top-left-radius: 10px; }
+  .frame span.tr { top: 0; right: 0; border-left: none; border-bottom: none; border-top-right-radius: 10px; }
+  .frame span.bl { bottom: 0; left: 0; border-right: none; border-top: none; border-bottom-left-radius: 10px; }
+  .frame span.br { bottom: 0; right: 0; border-left: none; border-top: none; border-bottom-right-radius: 10px; }
+
+  .hint {
+    margin: 20px auto 0; display: inline-flex; align-items: center; gap: 8px;
+    padding: 9px 16px; border-radius: 999px; background: rgba(245, 158, 11, 0.12);
+    color: var(--beer-deep); font-size: 15px; font-weight: 700;
+  }
+  .hint svg { width: 18px; height: 18px; }
+  .sub { margin-top: 14px; font-size: 13.5px; line-height: 1.5; color: var(--muted); font-family: system-ui, sans-serif; }
+  .addr { margin-top: 10px; padding-top: 14px; border-top: 1px solid var(--line); font-size: 12.5px; color: var(--muted); font-family: system-ui, sans-serif; }
+  .addr b { color: var(--ink); }
+
   @media print {
-    body { background: #fff; }
-    .card { box-shadow: none; border: none; }
+    body { background: #fff; padding: 0; }
+    .card { box-shadow: none; border: 1px solid var(--line); }
   }
 </style>
 </head>
 <body>
   <main class="card">
-    <div class="eyebrow">Alberto bar</div>
-    <h1>Меню и подбор пива</h1>
+    <img class="logo" src="img/alberto/brand/logo.webp" alt="Alberto bar">
+    <div class="eyebrow">Меню и подбор пива</div>
+    <h1>Пиво к закускам</h1>
+
+    <div class="frame">
+      <span class="tl"></span><span class="tr"></span><span class="bl"></span><span class="br"></span>
+      <img src="qr.svg" alt="QR-код меню Alberto bar">
+    </div>
+
+    <div class="hint">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M3 12h18"/></svg>
+      Наведите камеру телефона
+    </div>
+
     <p class="sub">К каждому сету закусок — пиво из карты бара, с описанием вкуса и пирамидой нот. От команды Flavor Tree.</p>
-    <img class="qr" src="qr.svg" alt="QR-код меню Alberto bar" width="260" height="260">
-    <p class="hint">Наведите камеру телефона на <span>QR-код</span></p>
-    <p class="addr">Алматы, ул. Гоголя 144</p>
+    <p class="addr"><b>Alberto bar</b> · Алматы, ул. Гоголя 144</p>
   </main>
 </body>
 </html>
