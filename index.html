@@ -1,0 +1,1084 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#FAFAF9">
+<title>Меню · Flavor Tree</title>
+<link rel="icon" href="/favicon.ico">
+<link rel="preload" as="image" href="decor/logo-sm.webp" type="image/webp">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" media="print" onload="this.media='all'">
+<style>
+  /* Мини-версия гостевого меню Flavor Tree (/menu/<slug>) для бара: те же токены, стекло и карточки,
+     «Подобрать напиток», лист сорта с пирамидой и сомелье. Без Angular, стола и заказа: команда пилота
+     подходит к столам и показывает подбор. Тексты, картинки сортов и карта бара: /pilot/<slug>.json.
+     Нет ответа API: меню и пирамиды из снимка /pilot/<slug>-menu.json и -brands.json (scripts/alberto_snapshot.py).
+     Один файл без сборки: на Vercel все пути /m/* отдают эту страницу, отдельный скрипт рядом не положить. */
+  :root {
+    --bg-0: #FAFAF9; --bg-1: #FFFFFF; --bg-2: #FFFDF9;
+    --beer-light: #D97706; --beer-mid: #B45309; --beer-deep: #92400E; --beer-accent: #F59E0B;
+    --beer-glow: rgba(245, 158, 11, 0.15);
+    --foam: #1C1917; --foam-dim: #44403C; --muted: #78716C;
+    --line: rgba(180, 83, 9, 0.15); --line-subtle: rgba(180, 83, 9, 0.08);
+    --glass: rgba(255, 255, 255, 0.72); --glass-strong: rgba(255, 255, 255, 0.88);
+    --shadow-warm: 0 4px 24px -6px rgba(180, 83, 9, 0.08); --shadow-md: 0 8px 32px -8px rgba(180, 83, 9, 0.12);
+    --shadow-glow: 0 0 0 3px rgba(245, 158, 11, 0.12);
+    --success: #16A34A;
+    --radius-sm: 8px; --radius-md: 12px; --radius-lg: 16px; --radius-xl: 20px; --radius-2xl: 24px; --radius-full: 9999px;
+    --font-heading: 'Outfit', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    --font-body: 'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+    --gutter: 16px;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  [hidden] { display: none !important; }
+  html { -webkit-font-smoothing: antialiased; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; -webkit-tap-highlight-color: rgba(245, 158, 11, 0.12); }
+  body {
+    min-height: 100vh; overflow-x: hidden; color: var(--foam); font: 400 16px/1.6 var(--font-body);
+    background:
+      radial-gradient(ellipse 900px 500px at 50% -8%, rgba(245, 158, 11, 0.18), transparent 60%),
+      radial-gradient(ellipse 600px 400px at 85% 15%, rgba(180, 83, 9, 0.08), transparent 55%),
+      linear-gradient(180deg, #FAFAF9 0%, #F5F0E8 100%);
+    background-color: var(--bg-0);
+  }
+  body.locked { overflow: hidden; }
+  h1, h2, h3 { font-family: var(--font-heading); letter-spacing: -0.025em; line-height: 1.15; color: var(--foam); }
+  button, input { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  a { color: var(--beer-deep); }
+  :focus-visible { outline: 2px solid var(--beer-light); outline-offset: 2px; }
+  ul { list-style: none; }
+  .text-muted { color: var(--muted); } .text-dim { color: var(--foam-dim); }
+  .text-sm { font-size: 0.875rem; } .text-xs { font-size: 0.78rem; }
+  .page { max-width: 600px; margin: 0 auto; padding: 12px var(--gutter) calc(96px + env(safe-area-inset-bottom)); }
+  .kicker { display: block; font: 700 0.75rem var(--font-body); letter-spacing: 0.08em; text-transform: uppercase; color: var(--beer-mid); }
+
+  /* ── общие детали дизайн-системы ── */
+  .glass-panel { background: var(--glass); -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px);
+    border: 1px solid var(--line); border-radius: var(--radius-xl); box-shadow: var(--shadow-warm); }
+  .glass-panel-strong { background: var(--glass-strong); -webkit-backdrop-filter: blur(24px); backdrop-filter: blur(24px);
+    border: 1px solid var(--line); border-radius: var(--radius-xl); box-shadow: var(--shadow-md); }
+  .glass-card { background: var(--bg-1); border: 1px solid var(--line); border-radius: var(--radius-xl); box-shadow: var(--shadow-warm); }
+  .badge { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: var(--radius-full); font-size: 0.78rem;
+    font-weight: 600; background: var(--beer-glow); color: var(--beer-deep); border: 1px solid rgba(180, 83, 9, 0.2); white-space: nowrap; }
+  .pill { display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border-radius: var(--radius-full); background: var(--bg-1);
+    border: 1px solid var(--line-subtle); font-size: 0.82rem; color: var(--foam-dim); white-space: nowrap; }
+  .btn-amber { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 0 24px; border: none;
+    border-radius: var(--radius-md); background: linear-gradient(135deg, var(--beer-light), var(--beer-mid)); color: #fff;
+    font-family: var(--font-body); font-weight: 600; font-size: 0.95rem; white-space: nowrap; text-decoration: none;
+    box-shadow: 0 6px 20px -6px rgba(180, 83, 9, 0.4); transition: transform 250ms var(--ease-out); }
+  .btn-amber:active { transform: scale(0.98); }
+  .btn-outline { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 0 18px;
+    border: 1px solid var(--line); border-radius: var(--radius-md); background: transparent; color: var(--foam); font-weight: 600;
+    font-size: 0.92rem; text-decoration: none; }
+  .btn-block { width: 100%; }
+  .btn-ghost { display: inline-grid; place-items: center; min-width: 44px; min-height: 44px; border: none; border-radius: var(--radius-sm);
+    background: transparent; color: var(--foam-dim); }
+  .bottle-img { max-width: 100%; max-height: 100%; object-fit: contain; filter: drop-shadow(0 8px 14px rgba(28, 25, 23, 0.22)); }
+  /* Сорт на цвете своего бренда: --acc задаёт карточка */
+  .stage { position: relative; display: grid; place-items: center; overflow: hidden; color: var(--beer-light);
+    background: radial-gradient(circle at 50% 78%, color-mix(in srgb, var(--acc, #D97706) 30%, transparent), transparent 68%),
+      linear-gradient(180deg, color-mix(in srgb, var(--acc, #D97706) 7%, #fff), color-mix(in srgb, var(--acc, #D97706) 14%, #fff)); }
+  .pips { display: flex; align-items: center; gap: 5px; }
+  .pip { width: 22px; height: 6px; border-radius: var(--radius-full); background: rgba(180, 83, 9, 0.18); }
+  .pip.on { background: linear-gradient(90deg, var(--beer-accent), var(--beer-mid)); }
+  .pips-sm .pip { width: 12px; height: 5px; }
+  .pips-n { margin-left: 4px; font-size: 0.8rem; font-weight: 700; color: var(--beer-mid); }
+
+  /* ── шапка Flavor Tree ── */
+  .nav-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 14px; margin-bottom: 12px; }
+  .nav-logo { display: flex; align-items: center; gap: 12px; min-width: 0; color: inherit; text-decoration: none; }
+  .nav-logo-icon { flex-shrink: 0; width: 44px; height: 44px; border-radius: var(--radius-md); background: #fff; border: 1px solid var(--line);
+    overflow: hidden; box-shadow: 0 6px 16px rgba(180, 83, 9, 0.16); }
+  .nav-logo-icon img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 62%; transform: scale(1.45); }
+  .nav-brand-name { display: block; font: 800 1.2rem/1.1 var(--font-heading); letter-spacing: -0.01em; }
+  .nav-brand-sub { display: block; font-size: 0.66rem; color: var(--muted); font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
+  .nav-full { flex-shrink: 0; display: inline-flex; align-items: center; min-height: 40px; padding: 0 14px; border-radius: var(--radius-full);
+    border: 1px solid var(--line); background: var(--bg-1); color: var(--beer-deep); font-size: 0.8rem; font-weight: 600; text-decoration: none; }
+  .vm-strip { position: sticky; top: 8px; z-index: 6; display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 6px 16px 6px 6px;
+    margin-bottom: 14px; border-radius: var(--radius-full); }
+  .vm-strip-logo { flex-shrink: 0; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: #fff;
+    border: 1px solid var(--line-subtle); overflow: hidden; }
+  .vm-strip-logo img { width: 86%; height: auto; }
+  .vm-strip-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 700 1rem var(--font-heading); }
+  .vm-strip-sub { flex-shrink: 0; font-size: 0.78rem; font-weight: 600; color: var(--muted); }
+
+  /* ── витрина ── */
+  .vm-hero { display: flex; flex-direction: column; gap: 14px; padding: 20px; margin-bottom: 18px; }
+  .vm-hero-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .vm-hero-logo { width: 116px; height: 74px; padding: 6px 8px; border-radius: var(--radius-lg); background: #fff; border: 1px solid var(--line-subtle);
+    box-shadow: 0 6px 18px -6px rgba(180, 83, 9, 0.35); }
+  .vm-hero-logo img { width: 100%; height: 100%; object-fit: contain; }
+  .vm-title { font-size: clamp(1.7rem, 7vw, 2.3rem); font-weight: 800; }
+  .vm-desc { line-height: 1.6; }
+  .vm-facts { display: flex; flex-direction: column; gap: 6px; font-size: 0.92rem; }
+  .vm-facts li { display: flex; align-items: center; gap: 8px; color: var(--foam-dim); }
+  .vm-facts svg { flex-shrink: 0; color: var(--beer-mid); }
+  .vm-facts a { display: inline-block; padding: 6px 0; font-weight: 600; text-decoration: none; }
+
+  /* ── пиво бара: бутылки лентой ── */
+  .vm-beers-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin: 4px 0 10px; }
+  .vm-beers-head h2 { font-size: 1.3rem; }
+  .vm-beers { display: flex; gap: 10px; margin: 0 calc(-1 * var(--gutter)) 22px; padding: 4px var(--gutter) 8px; overflow-x: auto; scrollbar-width: none;
+    scroll-snap-type: x proximity; }
+  .vm-beers::-webkit-scrollbar { display: none; }
+  .vm-beer { flex: none; width: 116px; padding: 0; border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--bg-1);
+    box-shadow: var(--shadow-warm); overflow: hidden; text-align: left; scroll-snap-align: start; transition: transform 200ms var(--ease-out); }
+  .vm-beer:active { transform: scale(0.97); }
+  .vm-beer .stage { height: 132px; padding: 10px 0 6px; }
+  .vm-beer .stage img { max-height: 116px; }
+  .vm-beer-tag { position: absolute; top: 8px; left: 8px; padding: 2px 8px; border-radius: var(--radius-full); background: rgba(255, 255, 255, 0.85);
+    font-size: 0.68rem; font-weight: 700; color: var(--foam-dim); }
+  .vm-beer-body { display: block; padding: 8px 10px 10px; }
+  .vm-beer-name { display: block; font: 700 0.92rem/1.2 var(--font-heading); }
+  .vm-beer-line { display: block; margin-top: 2px; font-size: 0.72rem; line-height: 1.3; color: var(--muted); }
+
+  /* ── разделы ── */
+  .vm-pills { position: sticky; top: 68px; z-index: 5; display: flex; gap: 8px; margin: 0 0 20px; padding: 6px 8px; overflow-x: auto;
+    scrollbar-width: none; border: 1px solid var(--line); border-radius: var(--radius-full); background: var(--glass-strong);
+    -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); box-shadow: var(--shadow-warm); }
+  .vm-pills::-webkit-scrollbar { display: none; }
+  .vm-pill { flex-shrink: 0; display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 14px; border: 1px solid var(--line);
+    border-radius: var(--radius-full); background: var(--glass-strong); color: var(--foam-dim); font-size: 0.84rem; font-weight: 600; white-space: nowrap;
+    transition: background 150ms ease, color 150ms ease; }
+  .vm-pill.active { background: linear-gradient(155deg, var(--beer-accent), var(--beer-mid)); color: #fff; border-color: transparent;
+    box-shadow: 0 4px 16px rgba(180, 83, 9, 0.3); }
+  .vm-pill-n { font-size: 0.75rem; opacity: 0.75; }
+  .vm-section { margin-bottom: 32px; scroll-margin-top: 136px; }
+  .vm-section-title { font-size: 1.3rem; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--line-subtle); }
+  .vm-items { display: flex; flex-direction: column; gap: 16px; }
+
+  /* ── блюдо ── */
+  .vm-dish { display: flex; flex-direction: column; overflow: hidden; scroll-margin-top: 136px; }
+  .vm-dish-photo { position: relative; aspect-ratio: 16 / 10; background: linear-gradient(135deg, rgba(245, 158, 11, 0.16), rgba(180, 83, 9, 0.07)); overflow: hidden; }
+  .vm-dish-photo img { display: block; width: 100%; height: 100%; object-fit: cover; }
+  .vm-gift { position: absolute; top: 12px; left: 12px; display: inline-flex; align-items: center; gap: 6px; max-width: calc(100% - 24px); padding: 6px 12px;
+    border-radius: var(--radius-full); background: rgba(28, 25, 23, 0.62); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+    color: #fff; font-size: 0.8rem; font-weight: 600; }
+  .vm-gift b { color: #FCD34D; font-weight: 700; }
+  .vm-dish-body { display: flex; flex-direction: column; gap: 6px; padding: 16px; }
+  .vm-item-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+  .vm-dish-name { font-size: 1.15rem; line-height: 1.25; overflow-wrap: anywhere; }
+  .vm-price { flex-shrink: 0; font: 800 1.05rem var(--font-heading); color: var(--beer-deep); white-space: nowrap; }
+  .vm-moods { display: flex; flex-wrap: wrap; gap: 6px; }
+  .vm-dish-desc { line-height: 1.5; }
+  details.vm-comp { font-size: 0.82rem; color: var(--muted); }
+  details.vm-comp summary { display: inline-flex; align-items: center; gap: 4px; min-height: 32px; list-style: none; cursor: pointer; font-weight: 600; color: var(--foam-dim); }
+  details.vm-comp summary::-webkit-details-marker { display: none; }
+  details.vm-comp summary::after { content: '▾'; color: var(--muted); }
+  details.vm-comp[open] summary::after { content: '▴'; }
+  .vm-chef { display: flex; align-items: flex-start; gap: 6px; font-size: 0.84rem; font-style: italic; color: var(--beer-deep); }
+  .vm-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin-top: 4px; }
+  .vm-rec-toggle { display: inline-flex; align-items: center; gap: 8px; min-height: 46px; padding: 0 18px; border: none;
+    border-radius: var(--radius-full); background: linear-gradient(135deg, var(--beer-light), var(--beer-mid)); color: #fff; font-size: 0.9rem; font-weight: 700;
+    white-space: nowrap; box-shadow: 0 8px 20px -10px rgba(180, 83, 9, 0.7); transition: transform 150ms ease; }
+  .vm-rec-toggle.active { background: var(--beer-glow); color: var(--beer-deep); box-shadow: none; }
+  .vm-rec-toggle:active { transform: scale(0.97); }
+  .vm-rec-chevron { transition: transform 150ms ease; }
+  .vm-rec-toggle.active .vm-rec-chevron { transform: rotate(180deg); }
+  .vm-hint { display: inline-flex; align-items: center; gap: 6px; min-width: 0; padding: 0; border: none; background: none;
+    color: var(--muted); font-size: 0.8rem; font-weight: 600; text-align: left; }
+  .vm-hint img { width: 18px; height: 36px; }
+  .vm-hint b { color: var(--foam-dim); font-weight: 700; }
+  .vm-rec-toggle.active + .vm-hint { display: none; }
+
+  /* ── панель подбора ── */
+  .vm-rec-panel { display: flex; flex-direction: column; gap: 12px; padding: 14px 16px 16px; border-top: 1px solid var(--line-subtle);
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(180, 83, 9, 0.05)); animation: vmFade 250ms var(--ease-out); }
+  .vm-rec-top { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .vm-lead { display: grid; grid-template-columns: 112px 1fr; gap: 14px; align-items: center; width: 100%; padding: 0; border: 1px solid var(--line);
+    border-radius: var(--radius-lg); background: var(--bg-1); overflow: hidden; text-align: left; box-shadow: var(--shadow-warm); }
+  .vm-lead .stage { height: 150px; }
+  .vm-lead .stage img { max-height: 132px; }
+  .vm-lead-body { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px 10px 0; min-width: 0; }
+  .vm-lead-name { font: 800 1.3rem/1.15 var(--font-heading); overflow-wrap: anywhere; }
+  .vm-lead-tag { font-size: 0.82rem; font-weight: 600; color: var(--beer-mid); }
+  .vm-why { padding: 14px; border-radius: var(--radius-lg); background: var(--bg-1); border: 1px solid rgba(245, 158, 11, 0.3); }
+  .vm-why p { margin-top: 6px; font-size: 1rem; line-height: 1.55; color: var(--foam); }
+  .vm-fx { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--line); }
+  .vm-fx li { display: grid; grid-template-columns: 26px 1fr; gap: 10px; align-items: center; font-size: 0.9rem; line-height: 1.4; color: var(--foam-dim); }
+  .vm-fx b { display: block; font-size: 0.72rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+  .glass-ico { width: 26px; height: 22px; }
+  .glass-ico.t1 { background: linear-gradient(#FDE68A, #FBBF24); clip-path: polygon(30% 0, 70% 0, 82% 100%, 18% 100%); }
+  .glass-ico.t2 { background: linear-gradient(#FBBF24, #F59E0B); clip-path: polygon(18% 0, 82% 0, 92% 100%, 8% 100%); }
+  .glass-ico.t3 { background: linear-gradient(#D97706, #92400E); clip-path: polygon(8% 0, 92% 0, 100% 100%, 0 100%); }
+  .vm-link { display: inline-flex; align-items: center; gap: 4px; min-height: 40px; padding: 4px 0; border: none; background: transparent;
+    color: var(--beer-mid); font-size: 0.88rem; font-weight: 700; text-align: left; }
+  .vm-alts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .vm-alt { display: flex; flex-direction: column; padding: 0; border: 1px solid var(--line-subtle); border-radius: var(--radius-lg); background: var(--bg-1);
+    overflow: hidden; text-align: left; }
+  .vm-alt .stage { height: 96px; padding-top: 6px; }
+  .vm-alt .stage img { max-height: 84px; }
+  .vm-alt-body { display: flex; flex-direction: column; gap: 3px; padding: 8px 10px 10px; }
+  .vm-alt-name { font: 700 0.95rem/1.2 var(--font-heading); }
+  .vm-rec-none { font-size: 0.9rem; color: var(--muted); }
+  .vm-rate { display: flex; flex-direction: column; gap: 6px; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--bg-1); }
+  .vm-rate-title { font: 700 0.95rem/1.3 var(--font-heading); }
+  .vm-stars { display: flex; gap: 2px; }
+  .vm-star { display: grid; place-items: center; width: 44px; height: 44px; border: none; border-radius: var(--radius-md); background: transparent;
+    color: rgba(180, 83, 9, 0.25); transition: color 150ms ease, transform 150ms ease; }
+  .vm-star.on { color: var(--beer-accent); }
+  .vm-star:active { transform: scale(0.92); }
+  .vm-rate-row { display: flex; gap: 8px; }
+  .vm-rate-row .btn-amber { padding: 0 16px; }
+  .input { width: 100%; min-width: 0; min-height: 48px; padding: 10px 14px; border-radius: var(--radius-md); border: 1px solid var(--line); background: var(--bg-1);
+    font-size: 16px; color: var(--foam); outline: none; }
+  .input:focus { border-color: var(--beer-light); box-shadow: var(--shadow-glow); }
+  .vm-thanks { color: var(--success); font-weight: 600; font-size: 0.9rem; }
+
+  /* ── напитки бара ── */
+  .vm-drinks { display: grid; gap: 12px; }
+  .vm-sub { margin: 18px 0 10px; font: 700 0.75rem var(--font-body); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+  .vm-sub:first-child { margin-top: 0; }
+  .vm-drink { display: grid; grid-template-columns: 92px 1fr; width: 100%; padding: 0; overflow: hidden; text-align: left; }
+  .vm-drink .stage { min-height: 128px; }
+  .vm-drink .stage img { max-height: 112px; }
+  .vm-drink-body { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; padding: 12px 14px; }
+  .vm-drink-name { font: 700 1.05rem var(--font-heading); }
+  .vm-drink-tag { font-size: 0.78rem; font-weight: 700; color: var(--beer-mid); }
+  .vm-drink-note { font-size: 0.86rem; line-height: 1.45; color: var(--foam-dim); }
+
+  /* ── состояния и подвал ── */
+  .vm-note { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; padding: 8px 12px;
+    font-size: 0.9rem; line-height: 1.45; background: var(--beer-glow); border: 1px solid var(--line); border-radius: var(--radius-lg); }
+  .vm-empty { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 40px 24px; text-align: center; }
+  .skeleton-card { min-height: 300px; margin-bottom: 16px; border-radius: var(--radius-xl); border: 1px solid var(--line-subtle);
+    background: linear-gradient(90deg, rgba(180, 83, 9, 0.06) 40%, rgba(245, 158, 11, 0.16) 50%, rgba(180, 83, 9, 0.06) 60%) 100% 0 / 300% 100%;
+    animation: shimmer 1.4s ease-in-out infinite; }
+  @keyframes shimmer { to { background-position: 0 0; } }
+  .ft-foot { margin-top: 28px; text-align: center; color: var(--muted); font-size: 0.8rem; line-height: 1.5; }
+  .ft-foot p + p { margin-top: 6px; }
+  .ft-foot img { width: 28px; height: 28px; border-radius: 8px; vertical-align: middle; margin-right: 6px; }
+
+  /* ── лист сорта ── */
+  .scrim { position: fixed; inset: 0; z-index: 140; background: rgba(28, 25, 23, 0.55); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+    opacity: 0; pointer-events: none; transition: opacity 250ms ease; }
+  .scrim.on { opacity: 1; pointer-events: auto; }
+  .vm-sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 150; max-width: 600px; max-height: 92vh; max-height: 92dvh; margin: 0 auto;
+    display: flex; flex-direction: column; background: var(--bg-0); border: 1px solid var(--line); border-bottom: none;
+    border-radius: var(--radius-2xl) var(--radius-2xl) 0 0; box-shadow: 0 -16px 48px -12px rgba(28, 25, 23, 0.35); overflow: hidden;
+    transform: translateY(105%); visibility: hidden; transition: transform 350ms var(--ease-out), visibility 0s 350ms; }
+  .vm-sheet.on { transform: none; visibility: visible; transition: transform 350ms var(--ease-out); }
+  .vm-sheet.over { z-index: 155; }
+  .vm-sheet:focus { outline: none; }
+  .vm-sheet-scroll { flex: 1; overflow-y: auto; overscroll-behavior: contain; padding-bottom: calc(24px + env(safe-area-inset-bottom)); }
+  .bd-close { position: absolute; z-index: 3; top: 12px; right: 12px; width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--line);
+    background: rgba(255, 255, 255, 0.86); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); color: var(--foam-dim); display: grid; place-items: center; }
+  .bd-stage { height: 250px; padding-top: 18px; }
+  .bd-stage img { max-height: 220px; }
+  .bd-stage::before { content: ''; position: absolute; top: 8px; left: 50%; width: 40px; height: 4px; margin-left: -20px; border-radius: 2px; background: rgba(120, 113, 108, 0.35); }
+  .bd-body { padding: 16px var(--gutter) 0; }
+  .bd-name { margin-top: 2px; font-size: 1.9rem; font-weight: 800; overflow-wrap: anywhere; }
+  .bd-badges { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .bd-note { margin-top: 12px; font-size: 1.05rem; line-height: 1.55; color: var(--foam); }
+  .bd-desc { margin-top: 8px; font-size: 0.86rem; line-height: 1.5; color: var(--muted); }
+  .bd-assoc { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+  .bd-h { margin: 26px 0 12px; font-size: 1.2rem; }
+  .bd-why { display: flex; flex-direction: column; gap: 10px; margin-top: 20px; padding: 16px; border-radius: var(--radius-lg);
+    border: 1px solid rgba(245, 158, 11, 0.3); background: linear-gradient(135deg, rgba(245, 158, 11, 0.14), rgba(180, 83, 9, 0.04)), var(--bg-1); }
+  .bd-duo { display: flex; align-items: center; gap: 12px; }
+  .bd-duo-pics { position: relative; flex: none; width: 96px; height: 70px; }
+  .bd-duo-pics img:first-child { position: absolute; left: 0; top: 0; width: 66px; height: 66px; border-radius: 50%; object-fit: cover; border: 3px solid #fff; box-shadow: var(--shadow-md); }
+  .bd-duo-pics .bottle-img { position: absolute; right: 0; bottom: -4px; height: 76px; width: auto; }
+  .bd-duo-title { font: 700 1rem/1.3 var(--font-heading); }
+  .bd-why p { font-size: 1.02rem; line-height: 1.55; }
+  .tier { display: grid; grid-template-columns: 70px 1fr; gap: 14px; animation: rise 450ms var(--ease-out) both; animation-delay: calc(var(--i) * 90ms); }
+  .tier + .tier { margin-top: 4px; }
+  @keyframes rise { from { opacity: 0; transform: translateY(8px); } }
+  .shape { min-height: 82px; }
+  .shape.t1 { background: linear-gradient(#FEF3C7, #FDE68A); clip-path: polygon(30% 0, 70% 0, 80% 100%, 20% 100%); }
+  .shape.t2 { background: linear-gradient(#FCD34D, #F59E0B); clip-path: polygon(20% 0, 80% 0, 90% 100%, 10% 100%); }
+  .shape.t3 { background: linear-gradient(#D97706, #92400E); clip-path: polygon(10% 0, 90% 0, 100% 100%, 0 100%); }
+  .tier-body { padding: 4px 0 12px; }
+  .tier-k { font-size: 0.82rem; color: var(--muted); }
+  .tier-k b { font: 700 0.98rem var(--font-heading); color: var(--foam); }
+  .notes { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+  .lvl { display: inline-block; width: 26px; height: 4px; border-radius: 2px; background: rgba(180, 83, 9, 0.15); overflow: hidden; vertical-align: middle; }
+  .lvl i { display: block; height: 100%; background: linear-gradient(90deg, var(--beer-accent), var(--beer-mid)); }
+  .tier-som { margin-top: 6px; font-size: 0.86rem; font-style: italic; color: var(--foam-dim); }
+  .tier-fx { margin-top: 6px; font-size: 0.9rem; line-height: 1.4; font-weight: 600; color: var(--beer-deep); }
+  .tier-fx::before { content: '→ '; color: var(--beer-light); }
+  .bd-who li { display: flex; gap: 10px; padding: 6px 0; font-size: 0.95rem; color: var(--foam-dim); }
+  .bd-who li::before { content: '✓'; color: var(--beer-mid); font-weight: 800; }
+  .bd-pairs { display: flex; flex-direction: column; gap: 8px; }
+  .bd-pair { display: grid; grid-template-columns: 64px 1fr; gap: 12px; align-items: center; width: 100%; padding: 8px; text-align: left; }
+  .bd-pair img { width: 64px; height: 64px; border-radius: var(--radius-md); object-fit: cover; }
+  .bd-pair-name { display: block; font: 700 0.95rem/1.25 var(--font-heading); }
+  .bd-pair-why { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-top: 2px; font-size: 0.82rem;
+    line-height: 1.35; color: var(--muted); }
+  .bd-pair .badge { margin-bottom: 4px; padding: 2px 8px; font-size: 0.7rem; }
+
+  /* ── возраст ── */
+  .ag-backdrop { position: fixed; inset: 0; z-index: 200; display: grid; place-items: center; padding: 16px; background: rgba(28, 25, 23, 0.55);
+    -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+  .ag-card { width: min(440px, 100%); padding: 32px 24px 24px; border: 1px solid var(--line); border-radius: var(--radius-xl); background: var(--bg-2);
+    box-shadow: 0 32px 64px -16px rgba(28, 25, 23, 0.3); text-align: center; animation: agRise 350ms var(--ease-out); }
+  @keyframes agRise { from { opacity: 0; transform: translateY(16px); } }
+  .ag-badge { display: grid; place-items: center; width: 56px; height: 56px; margin: 0 auto 16px; border-radius: var(--radius-lg);
+    background: linear-gradient(135deg, var(--beer-light), var(--beer-mid)); color: #fff; font: 800 1.15rem var(--font-heading);
+    box-shadow: 0 8px 20px -8px rgba(180, 83, 9, 0.5); }
+  .ag-title { font-size: 1.45rem; margin-bottom: 10px; }
+  .ag-text { color: var(--foam-dim); line-height: 1.55; }
+  .ag-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 22px; }
+  .ag-note { margin-top: 16px; font-size: 0.75rem; color: var(--muted); }
+  .toast { position: fixed; left: 16px; right: 16px; bottom: calc(88px + env(safe-area-inset-bottom)); z-index: 210; max-width: 520px; margin: 0 auto;
+    padding: 12px 16px; border-radius: var(--radius-md); background: var(--foam); color: #fff; font-size: 0.9rem; box-shadow: var(--shadow-md); }
+
+  /* ── сомелье ── */
+  .ai-fab { position: fixed; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom)); z-index: 95; display: inline-flex; align-items: center;
+    gap: 10px; min-height: 56px; padding: 0 20px 0 16px; border: none; border-radius: var(--radius-full);
+    background: linear-gradient(135deg, var(--beer-light), var(--beer-deep)); color: #fff; font-size: 0.92rem; font-weight: 700;
+    box-shadow: 0 14px 32px -10px rgba(180, 83, 9, 0.6); transition: transform 250ms var(--ease-out), opacity 250ms var(--ease-out); }
+  .ai-fab.away { opacity: 0; transform: translateY(24px) scale(0.85); pointer-events: none; }
+  .ai-sheet { position: fixed; inset: 0; z-index: 150; display: flex; flex-direction: column; max-width: 600px; margin: 0 auto; background: var(--bg-2);
+    transform: translateY(104%); visibility: hidden; transition: transform 350ms var(--ease-out), visibility 0s 350ms; }
+  .ai-sheet.on { transform: none; visibility: visible; transition: transform 350ms var(--ease-out); }
+  .ai-sheet:focus { outline: none; }
+  .ai-head { display: flex; align-items: center; gap: 8px; padding: max(10px, env(safe-area-inset-top)) 6px 10px 16px; border-bottom: 1px solid var(--line);
+    background: var(--glass-strong); }
+  .ai-ava { flex-shrink: 0; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; color: #fff;
+    background: linear-gradient(135deg, var(--beer-light), var(--beer-deep)); }
+  .ai-head-text { flex: 1; min-width: 0; }
+  .ai-title { font-size: 1.05rem; line-height: 1.2; }
+  .ai-sub { display: block; font-size: 0.76rem; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ai-list { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; gap: 12px; padding: 16px 14px; }
+  .ai-msg { display: flex; flex-direction: column; gap: 8px; max-width: 94%; animation: vmFade 250ms var(--ease-out); }
+  .ai-msg.me { align-self: flex-end; align-items: flex-end; }
+  .ai-msg.bot { align-self: flex-start; }
+  .ai-bubble { padding: 10px 14px; border-radius: 16px; font-size: 0.94rem; line-height: 1.5; white-space: pre-line; overflow-wrap: anywhere; }
+  .me .ai-bubble { background: linear-gradient(135deg, var(--beer-light), var(--beer-mid)); color: #fff; border-bottom-right-radius: 6px; }
+  .bot .ai-bubble { background: var(--bg-1); border: 1px solid var(--line); border-bottom-left-radius: 6px; }
+  .ai-note { font-size: 0.75rem; color: var(--muted); }
+  .ai-card { display: grid; grid-template-columns: 56px 1fr 40px; gap: 10px; align-items: center; width: 100%; padding: 10px 12px; border: 1px solid var(--line);
+    border-radius: var(--radius-lg); background: var(--bg-1); box-shadow: var(--shadow-warm); text-align: left; }
+  .ai-card .dimg { display: grid; place-items: center; width: 56px; height: 56px; border-radius: var(--radius-md); object-fit: cover; color: var(--beer-light);
+    background: var(--beer-glow); }
+  .ai-card .bimg { width: 40px; height: 64px; }
+  .ai-card-kind { display: block; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--beer-mid); }
+  .ai-card-title { display: block; font: 700 0.98rem/1.25 var(--font-heading); }
+  .ai-card-reason { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; margin-top: 2px; font-size: 0.84rem;
+    line-height: 1.4; color: var(--foam-dim); }
+  .ai-typing { display: inline-flex; align-items: center; gap: 5px; min-height: 40px; }
+  .ai-typing span { width: 7px; height: 7px; border-radius: 50%; background: var(--beer-mid); opacity: 0.35; animation: aiDot 1.2s infinite ease-in-out; }
+  .ai-typing span:nth-child(2) { animation-delay: 0.2s; } .ai-typing span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes aiDot { 40% { opacity: 1; transform: translateY(-3px); } }
+  .ai-foot { display: flex; flex-direction: column; gap: 8px; padding: 10px 14px calc(12px + env(safe-area-inset-bottom)); border-top: 1px solid var(--line);
+    background: var(--glass-strong); }
+  .ai-chips { display: flex; gap: 6px; margin: 0 -14px; padding: 0 14px 2px; overflow-x: auto; scrollbar-width: none; }
+  .ai-chips::-webkit-scrollbar { display: none; }
+  .ai-chip { flex-shrink: 0; min-height: 40px; padding: 0 14px; border: 1px solid var(--line); border-radius: var(--radius-full); background: var(--bg-1);
+    color: var(--beer-deep); font-size: 0.84rem; font-weight: 600; white-space: nowrap; }
+  .ai-input-row { display: flex; align-items: center; gap: 8px; }
+  .ai-input { flex: 1; min-width: 0; height: 46px; padding: 0 16px; border: 1px solid var(--line); border-radius: var(--radius-full); background: var(--bg-1);
+    font-size: 16px; outline: none; }
+  .ai-input:focus { border-color: var(--beer-light); box-shadow: var(--shadow-glow); }
+  .ai-send { flex-shrink: 0; display: grid; place-items: center; width: 46px; height: 46px; border: none; border-radius: 50%; color: #fff;
+    background: linear-gradient(135deg, var(--beer-light), var(--beer-mid)); box-shadow: 0 6px 16px -6px rgba(180, 83, 9, 0.5); }
+  .ai-foot-note { font-size: 0.72rem; line-height: 1.35; color: var(--muted); }
+
+  @keyframes vmFade { from { opacity: 0; } }
+  @supports not (background: color-mix(in srgb, red 50%, white)) {
+    .stage { background: radial-gradient(circle at 50% 78%, rgba(245, 158, 11, 0.28), transparent 68%), linear-gradient(180deg, #FFFBF2, #FDF0D8); }
+  }
+  @media (max-width: 360px) { .vm-star { width: 40px; } .nav-full { display: none; } .vm-lead { grid-template-columns: 96px 1fr; } }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+<!-- Вопрос о возрасте: как app-age-gate, в Казахстане алкоголь с 21 года -->
+<div class="ag-backdrop" id="gate" role="dialog" aria-modal="true" aria-labelledby="ag-title" hidden>
+  <div class="ag-card">
+    <div class="ag-badge" aria-hidden="true">21+</div>
+    <h2 class="ag-title" id="ag-title">Вам исполнился 21 год?</h2>
+    <p class="ag-text">В меню есть алкоголь, его подают только гостям старше 21 года. Если вам меньше, покажем блюда и безалкогольные напитки.</p>
+    <div class="ag-actions">
+      <button type="button" class="btn-amber" id="age-yes">Да</button>
+      <button type="button" class="btn-outline" id="age-no">Нет</button>
+    </div>
+    <p class="ag-note">Чрезмерное употребление алкоголя вредит вашему здоровью.</p>
+  </div>
+</div>
+
+<div class="page">
+  <header class="glass-panel nav-bar">
+    <a class="nav-logo" href="./">
+      <span class="nav-logo-icon"><img src="decor/logo-sm.webp" alt="" width="44" height="44"></span>
+      <span><span class="nav-brand-name">FLAVOR TREE</span><span class="nav-brand-sub">Sensory beer guide</span></span>
+    </a>
+  </header>
+
+  <div class="vm-strip glass-panel-strong">
+    <span class="vm-strip-logo" id="strip-logo" hidden><img alt=""></span>
+    <span class="vm-strip-name" id="strip-name"></span>
+    <span class="vm-strip-sub">пиво к закускам</span>
+  </div>
+
+  <main id="main" aria-busy="true"><div class="skeleton-card"></div><div class="skeleton-card"></div></main>
+
+  <footer class="ft-foot">
+    <p><img src="decor/logo-sm.webp" alt="">Пары к блюдам подобрала команда Flavor Tree по вкусу блюда и сорта.</p>
+    <p>Чрезмерное употребление алкоголя вредит вашему здоровью. Алкоголь только для гостей старше 21 года.</p>
+  </footer>
+</div>
+
+<button type="button" class="ai-fab" id="ai-fab" aria-controls="ai-sheet" aria-label="Сомелье Flavor Tree" hidden>
+  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/><path d="M9 9h5v6a1 1 0 0 1-1 1h-3a1 1 0 0 1-1-1z"/><path d="M14 10.5h1a1.5 1.5 0 0 1 0 3h-1"/><path d="M9 9c0-1 .8-1.5 2.5-1.5S14 8 14 9"/></svg>
+  <span>Сомелье</span>
+</button>
+
+<div class="scrim" id="scrim"></div>
+
+<section class="vm-sheet" id="drink-sheet" role="dialog" aria-modal="true" aria-labelledby="bd-name" tabindex="-1">
+  <button type="button" class="bd-close" data-close aria-label="Закрыть"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
+  <div class="vm-sheet-scroll" id="drink-scroll"></div>
+</section>
+
+<section class="ai-sheet" id="ai-sheet" role="dialog" aria-modal="true" aria-labelledby="ai-title" tabindex="-1">
+  <header class="ai-head">
+    <span class="ai-ava" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/><path d="M9 9h5v6a1 1 0 0 1-1 1h-3a1 1 0 0 1-1-1z"/></svg></span>
+    <div class="ai-head-text"><h2 class="ai-title" id="ai-title">Сомелье</h2><span class="ai-sub" id="ai-sub"></span></div>
+    <button type="button" class="btn-ghost" data-close aria-label="Закрыть"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
+  </header>
+  <div class="ai-list" id="thread" aria-live="polite">
+    <div class="ai-msg bot"><div class="ai-bubble">Здравствуйте! Подскажу, что взять из меню и какое пиво к этому подойдёт. Выберите настроение ниже или напишите своими словами.</div></div>
+  </div>
+  <div class="ai-foot">
+    <div class="ai-chips" id="ai-chips" aria-label="Настроение"></div>
+    <form class="ai-input-row" id="ai-form">
+      <input class="ai-input" id="ai-input" maxlength="300" autocomplete="off" placeholder="Спросите сомелье..." aria-label="Сообщение сомелье">
+      <button type="submit" class="ai-send" aria-label="Отправить"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg></button>
+    </form>
+    <p class="ai-foot-note">Алкоголь только для гостей старше 21 года. Про аллергию и состав блюд спросите официанта.</p>
+  </div>
+</section>
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script>
+(function () {
+  'use strict';
+  // Ссылка на анкету Efes (Valeriia присылает отдельно). Пусто: кнопки нет.
+  var SURVEY_URL = '';
+  var LOCAL = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+  var API = LOCAL ? 'http://127.0.0.1:8010/api' : 'https://flavor-tree-backend.vercel.app/api';
+  var API_TIMEOUT_MS = 7000;
+  var SESSION_KEY = 'ft_sid', AGE_OK_KEY = 'ft_age_ok', ONCE = 'ft_once_';
+  var AI_TURNS = 8, MAX_TABLES = 60;
+  var LABELS = { COMPLEMENT: 'Дополняет', CONTRAST: 'Контраст', CLEANSE: 'Очищает', BRIDGE: 'Мостик' };
+  var LAYERS = [['top', 'Верхние ноты', 'первый глоток'], ['heart', 'Ноты сердца', 'вкус'], ['base', 'Базовые ноты', 'послевкусие']];
+  var DRINKS_SECTION = '__drinks__';
+  var ICON = {
+    mug: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 11h1a3 3 0 0 1 0 6h-1"/><path d="M9 12v6"/><path d="M13 12v6"/><path d="M14 7.5c-1 0-1.44.5-3 .5s-2-.5-3-.5-1.72.5-2.5.5a2.5 2.5 0 0 1 0-5c.78 0 1.57.5 2.5.5S9.44 2 11 2s2 1.5 3 1.5 1.72-.5 2.5-.5a2.5 2.5 0 0 1 0 5c-.78 0-1.5-.5-2.5-.5Z"/><path d="M5 8v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V8"/></svg>',
+    chevron: '<svg class="vm-rec-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>',
+    arrow: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>',
+    pin: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>',
+    clock: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>',
+    phone: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>',
+    star: '<svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.5l2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.3l-5.9 3.3 1.3-6.6-4.9-4.6 6.6-.8z"/></svg>'
+  };
+
+  var parts = location.pathname.split('/').filter(Boolean);
+  var query = new URLSearchParams(location.search);
+  var slug = (parts[0] === 'm' && parts[1] && !/\./.test(parts[1])) ? decodeURIComponent(parts[1]) : (query.get('v') || 'alberto');
+  var src = (query.get('src') || '').trim().slice(0, 16).toUpperCase();
+  // Стол на экране не показываем: если он пришёл в ссылке из QR, только пишем его в события пилота.
+  var rawTable = Number(query.get('table'));
+  var table = Number.isInteger(rawTable) && rawTable > 0 && rawTable <= MAX_TABLES ? rawTable : null;
+  if (query.has('table') || query.has('src')) {
+    try { history.replaceState({}, '', location.pathname + (query.has('v') ? '?v=' + encodeURIComponent(slug) : '')); } catch (e) {}
+  }
+  var minor = false, offline = false, copy = null, menu = null, section = '';
+  var items = {}, itemList = [], drinks = [], brands = {}, snapshotBrands = null, opened = {}, openSent = {}, rated = {};
+
+  // ─── утилиты ───
+  function $(id) { return document.getElementById(id); }
+  function isObj(v) { return v && typeof v === 'object' && !Array.isArray(v); }
+  function list(v) { return Array.isArray(v) ? v : []; }
+  function store(kind) { try { return kind === 'session' ? sessionStorage : localStorage; } catch (e) { return null; } }
+  function readStore(kind, key) { try { var s = store(kind); return s ? s.getItem(key) : null; } catch (e) { return null; } }
+  function writeStore(kind, key, value) { try { var s = store(kind); if (s) s.setItem(key, value); } catch (e) {} }
+  function uuid() {
+    try { if (crypto.randomUUID) return crypto.randomUUID(); } catch (e) {}
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+      var r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 3 | 8)).toString(16);
+    });
+  }
+  var memSession = '';
+  function session() {
+    var saved = readStore('local', SESSION_KEY);
+    if (saved && saved.length <= 36) return saved;
+    memSession = memSession || uuid();
+    writeStore('local', SESSION_KEY, memSession);
+    return memSession;
+  }
+  function cid() { var a = 'abcdefghijklmnopqrstuvwxyz0123456789', o = ''; for (var i = 0; i < 16; i++) o += a[Math.random() * 36 | 0]; return o; }
+  function post(url, body) {
+    try {
+      return fetch(url, { method: 'POST', keepalive: true, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    } catch (e) { return Promise.reject(e); }
+  }
+  function getJSON(url, timeoutMs) {
+    var ctrl = timeoutMs && window.AbortController ? new AbortController() : null;
+    var timer = ctrl ? setTimeout(function () { ctrl.abort(); }, timeoutMs) : 0;
+    return fetch(url, ctrl ? { signal: ctrl.signal } : undefined)
+      .then(function (r) { clearTimeout(timer); if (!r.ok) throw new Error(r.status); return r.json(); },
+        function (e) { clearTimeout(timer); throw e; });
+  }
+  function track(kind, fields) {
+    if (offline) return;
+    var ev = { kind: kind, meta: { cid: cid(), mini: true } };
+    Object.keys(fields || {}).forEach(function (k) {
+      if (fields[k] === null || fields[k] === undefined || fields[k] === '') return;
+      if (k === 'meta') Object.assign(ev.meta, fields.meta); else ev[k] = fields[k];
+    });
+    if (table && ev.table === undefined) ev.table = table;
+    post(API + '/events/', { session: session(), venue: slug, events: [ev] }).catch(function () {});
+  }
+  function trackOnce(key, scope, kind, fields) {
+    if (offline || readStore(scope, ONCE + key)) return;
+    writeStore(scope, ONCE + key, '1');
+    track(kind, fields);
+  }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  // 0 в карте значит «цену ещё не ввели»: такую цену не показываем.
+  function money(v) { var n = Number(v); return n > 0 ? String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + ' ₸' : ''; }
+  // Пути из JSON вида /img/...: отдаём относительными, чтобы сайт работал и в подпапке (GitHub Pages).
+  function rel(u) { return u.charAt(0) === '/' ? u.slice(1) : u; }
+  function localPath(p) { return typeof p === 'string' && /^\/[A-Za-z0-9_\-/.]+$/.test(p) ? rel(p) : ''; }
+  function imgUrl(u) { return typeof u === 'string' && /^(https?:\/\/|\/)[^\s"'<>()]+$/.test(u) ? rel(u) : ''; }
+  function toast(text) {
+    var t = $('toast'); t.textContent = text; t.hidden = false;
+    clearTimeout(toast.timer); toast.timer = setTimeout(function () { t.hidden = true; }, 2800);
+  }
+  function pips(n, small) {
+    var r = Math.max(0, Math.min(5, Math.round(Number(n) || 0))), h = '';
+    for (var i = 1; i <= 5; i++) h += '<span class="pip' + (i <= r ? ' on' : '') + '"></span>';
+    return '<span class="pips' + (small ? ' pips-sm' : '') + '" role="img" aria-label="Совместимость ' + r + ' из 5">' + h +
+      '<span class="pips-n">' + r + '/5</span></span>';
+  }
+
+  // ─── тексты и картинки заведения ───
+  function dishKey(item) { return String(item.dish.image || '').split('/').pop().replace(/\.[A-Za-z0-9]+$/, ''); }
+  function dishCopy(item) { var all = copy && isObj(copy.dishes) ? copy.dishes : {}; return isObj(all[dishKey(item)]) ? all[dishKey(item)] : {}; }
+  function beerCopy(name) { var all = copy && isObj(copy.beers) ? copy.beers : {}; return isObj(all[name]) ? all[name] : {}; }
+  function pairCopy(item, beer) { var p = dishCopy(item).pairs; return isObj(p) && isObj(p[beer]) ? p[beer] : {}; }
+  function title(item) { return dishCopy(item).title || item.dish.name.split(':')[0]; }
+  function beerName(name) { return beerCopy(name).name || name; }
+  function itemByKey(key) { return itemList.filter(function (i) { return dishKey(i) === key; })[0]; }
+  function drinkByName(name) { return drinks.filter(function (d) { return (d.brand_name || d.name) === name; })[0]; }
+  function abv(v) { return v != null && v !== '' ? String(v).replace('.', ',') + '%' : ''; }
+  function styleLine(rec) { return beerCopy(rec.brand_name).style || [rec.brand_style, abv(rec.abv)].filter(Boolean).join(' · '); }
+  function accentStyle(name) {
+    var a = beerCopy(name).accent;
+    return typeof a === 'string' && /^#[0-9a-fA-F]{3,8}$/.test(a) ? ' style="--acc:' + a + '"' : '';
+  }
+  function gift(note) { var m = /^в подарок:?\s*(.+)$/i.exec(note || ''); return m ? m[1] : ''; }
+
+  // Напиток карты в виде варианта подбора: для сорта, которого нет среди трёх лучших к блюду.
+  function asRec(d) {
+    return { brand: d.brand, brand_name: d.brand_name || d.name, brand_image: d.brand_image, brand_style: d.brand_style, abv: d.abv,
+      menu_drink: d, source: 'GUEST', explanation: '', compatibility_score: 0, is_alcoholic: d.is_alcoholic };
+  }
+  // Подбор к позиции, как в полном меню: до трёх напитков из карты бара, первым пара команды.
+  // Гостю младше 21 только безалкогольное: API уже отфильтровал, снимок фильтруем здесь.
+  function recsOf(item) {
+    var all = item.recommendations || [item.pairing].concat(item.alternatives || []);
+    return all.filter(function (r) {
+      return r && r.menu_drink && r.menu_drink.is_available !== false && !(minor && r.is_alcoholic !== false);
+    }).slice(0, 3);
+  }
+  function whyOf(item, rec) { return pairCopy(item, rec.brand_name).why || rec.explanation || ''; }
+  // Бутылка: своя картинка сорта из файла заведения, иначе из каталога.
+  function bottle(rec, cls) {
+    var url = localPath(beerCopy(rec && rec.brand_name).image) || (rec && imgUrl(rec.brand_image));
+    return url ? '<img class="bottle-img ' + (cls || '') + '" src="' + esc(url) + '" alt="" loading="lazy" decoding="async">' : ICON.mug;
+  }
+  function stage(name, inner, cls) { return '<span class="stage ' + (cls || '') + '"' + accentStyle(name) + '>' + inner + '</span>'; }
+  // Фото блюда или пусто: img с пустым src браузер запросил бы как адрес самой страницы.
+  function dishImg(item, cls) {
+    var url = item && imgUrl(item.dish.image);
+    return url ? '<img' + (cls ? ' class="' + cls + '"' : '') + ' src="' + esc(url) + '" alt="" loading="lazy" decoding="async">' : '';
+  }
+
+  // Пирамида и описание сорта из каталога Flavor Tree, по разу на сорт. Без API: из снимка.
+  function brandInfo(brandId) {
+    if (!brandId) return Promise.resolve(null);
+    if (offline) return snapshot().then(function (all) { return all[brandId] || null; });
+    if (!brands[brandId]) {
+      brands[brandId] = getJSON(API + '/brands/' + encodeURIComponent(brandId) + '/', API_TIMEOUT_MS)
+        .catch(function () { delete brands[brandId]; return snapshot().then(function (all) { return all[brandId] || null; }); });
+    }
+    return brands[brandId];
+  }
+  function snapshot() {
+    snapshotBrands = snapshotBrands || getJSON('pilot/' + encodeURIComponent(slug) + '-brands.json').catch(function () { return {}; });
+    return snapshotBrands;
+  }
+
+  // ─── слои: листы поверх страницы, «Назад» закрывает верхний ───
+  // Каждый слой кладёт запись в историю. Закрытие кнопкой делает history.back(), и его popstate пропускаем.
+  var layers = [], skipPop = 0;
+  function isOpen(el) { return layers.some(function (l) { return l.el === el; }); }
+  function openLayer(el, opener) {
+    if (!isOpen(el)) {
+      layers.push({ el: el, opener: opener || null });
+      try { history.pushState({ ftLayer: layers.length }, ''); } catch (e) {}
+    }
+    el.classList.toggle('over', layers.length > 1);
+    if (el.id !== 'ai-sheet') $('scrim').classList.add('on');
+    document.body.classList.add('locked');
+    requestAnimationFrame(function () { el.classList.add('on'); el.focus({ preventScroll: true }); });
+  }
+  function closeTop(fromHistory) {
+    var top = layers.pop();
+    if (!top) return;
+    top.el.classList.remove('on');
+    if (!layers.some(function (l) { return l.el.id !== 'ai-sheet'; })) $('scrim').classList.remove('on');
+    if (!layers.length) document.body.classList.remove('locked');
+    if (!fromHistory) { skipPop++; try { history.back(); } catch (e) { skipPop--; } }
+    if (top.opener && top.opener.isConnected && top.opener.focus) top.opener.focus({ preventScroll: true });
+  }
+  function closeAll() { while (layers.length) closeTop(false); }
+  window.addEventListener('popstate', function () { if (skipPop) { skipPop--; return; } closeTop(true); });
+  $('scrim').addEventListener('click', function () { closeTop(false); });
+  document.querySelectorAll('[data-close]').forEach(function (b) { b.addEventListener('click', function () { closeTop(false); }); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeTop(false); });
+
+  // ─── старт: тексты, возраст, меню ───
+  var copyReady = getJSON('pilot/' + encodeURIComponent(slug) + '.json')
+    .then(function (c) { copy = isObj(c) ? c : null; }).catch(function () { copy = null; });
+
+  function askAge() {
+    if (readStore('local', AGE_OK_KEY) === '1') { load(); return; }
+    $('gate').hidden = false; $('age-yes').focus();
+    $('age-yes').onclick = function () {
+      writeStore('local', AGE_OK_KEY, '1');
+      $('gate').hidden = true; load(function () { trackOnce('AGE_OK:' + slug, 'local', 'AGE_OK', { source: 'GATE' }); });
+    };
+    $('age-no').onclick = function () { minor = true; $('gate').hidden = true; load(); };
+  }
+  // Меню из API; нет ответа за API_TIMEOUT_MS: из снимка, и события пилота тогда не шлём.
+  function fetchMenu() {
+    var url = API + '/venues/' + encodeURIComponent(slug) + '/menu/' + (minor ? '?age=under21' : '');
+    return getJSON(url, API_TIMEOUT_MS).catch(function () {
+      return getJSON('pilot/' + encodeURIComponent(slug) + '-menu.json').then(function (data) { offline = true; return data; });
+    });
+  }
+  function load(after) {
+    $('main').setAttribute('aria-busy', 'true');
+    $('main').innerHTML = '<div class="skeleton-card"></div><div class="skeleton-card"></div>';
+    Promise.all([fetchMenu(), copyReady]).then(function (res) { setup(res[0]); if (after) after(); }).catch(function () {
+      $('main').removeAttribute('aria-busy');
+      $('main').innerHTML = '<div class="glass-card vm-empty"><p class="text-dim">Меню не загрузилось.</p>' +
+        '<p class="text-sm text-muted">Проверьте интернет и попробуйте ещё раз.</p>' +
+        '<button type="button" class="btn-amber" id="retry">Повторить</button></div>';
+      $('retry').onclick = function () { load(after); };
+    });
+  }
+  function setup(data) {
+    menu = data; items = {}; itemList = [];
+    var venue = data.venue || {}, brand = copy && isObj(copy.brand) ? copy.brand : {}, logo = localPath(brand.logo);
+    document.title = (venue.name || 'Меню') + ' · Flavor Tree';
+    $('strip-name').textContent = venue.name || '';
+    $('ai-sub').textContent = venue.name || '';
+    if (logo) { $('strip-logo').querySelector('img').src = logo; $('strip-logo').hidden = false; }
+    (data.sections || []).forEach(function (s) { s.items.forEach(function (i) { items[i.id] = i; itemList.push(i); }); });
+    drinks = (data.drinks || []).filter(function (d) { return d.is_available !== false && !(minor && d.is_alcoholic !== false); });
+    renderMain(venue, logo);
+    if (!minor && list(copy && copy.moods).length) { $('ai-fab').hidden = false; renderChips(); }
+    trackOnce('MENU_OPEN:' + slug, 'session', 'MENU_OPEN', { source: src || undefined, meta: minor ? { age: 'under21' } : undefined });
+    if (src === 'QR' || table) track('SCAN', { table: table, source: src || 'TABLE_LINK', meta: src ? { src: src.toLowerCase() } : undefined });
+  }
+
+  // ─── меню: витрина, пиво бара, разделы, блюда, напитки ───
+  function renderMain(venue, logo) {
+    var main = $('main'), sections = menu.sections || [];
+    var groups = cardGroups(), drinkRows = groups.reduce(function (n, g) { return n + g.rows.length; }, 0);
+    var h = minor ? '<div class="vm-note" role="status"><span>Вы ответили, что вам нет 21 года, поэтому алкоголь в меню скрыт.</span>' +
+      '<button type="button" class="vm-link" id="age-again">Мне есть 21</button></div>' : '';
+    h += '<section class="glass-panel vm-hero">' +
+      '<div class="vm-hero-top"><span class="badge">' + esc(venue.venue_type_display || 'Бар') + '</span>' +
+      (logo ? '<span class="vm-hero-logo"><img src="' + esc(logo) + '" alt="' + esc(venue.name || '') + '"></span>' : '') + '</div>' +
+      '<h1 class="vm-title">' + esc(venue.name || '') + '</h1>' +
+      (venue.description ? '<p class="vm-desc text-dim">' + esc(venue.description) + '</p>' : '') +
+      '<ul class="vm-facts">' +
+      (venue.address ? '<li>' + ICON.pin + '<span>' + esc([venue.city, venue.address].filter(Boolean).join(', ')) + '</span></li>' : '') +
+      (venue.working_hours ? '<li>' + ICON.clock + '<span>' + esc(venue.working_hours) + '</span></li>' : '') +
+      (venue.phone ? '<li>' + ICON.phone + '<a href="tel:' + esc(venue.phone.replace(/[^\d+]/g, '')) + '">' + esc(venue.phone) + '</a></li>' : '') + '</ul></section>';
+    if (!sections.length && !drinkRows) {
+      main.innerHTML = h + '<div class="glass-card vm-empty"><p class="text-dim">Меню пока пустое.</p><p class="text-sm text-muted">Заведение ещё не добавило блюда.</p></div>';
+      main.removeAttribute('aria-busy'); return;
+    }
+    if (!minor && drinkRows) h += beerStrip(groups);
+    h += '<nav class="vm-pills" id="pills" aria-label="Разделы меню">' + pill('', 'Все', itemList.length + drinkRows) +
+      sections.map(function (s) { return pill(s.name, s.name, s.items.length); }).join('') +
+      (drinkRows ? pill(DRINKS_SECTION, 'Напитки', drinkRows) : '') + '</nav>';
+    sections.forEach(function (s, si) {
+      h += '<section class="vm-section" data-section="' + esc(s.name) + '"><h2 class="vm-section-title">' + esc(s.name) + '</h2><div class="vm-items">' +
+        s.items.map(function (it, n) { return dishCard(it, si === 0 && n === 0); }).join('') + '</div></section>';
+    });
+    if (drinkRows) {
+      h += '<section class="vm-section" data-section="' + DRINKS_SECTION + '"><h2 class="vm-section-title">' +
+        (minor ? 'Безалкогольные напитки' : 'Напитки бара') + '</h2>' + groups.map(function (g) {
+          return (groups.length > 1 ? '<h3 class="vm-sub">' + esc(g.title) + '</h3>' : '') + '<div class="vm-drinks">' +
+            g.rows.map(function (r) { return drinkCard(r.name, r.d, r.volume); }).join('') + '</div>';
+        }).join('') + '</section>';
+    }
+    main.innerHTML = h;
+    main.removeAttribute('aria-busy');
+    if ($('age-again')) $('age-again').onclick = function () { writeStore('local', AGE_OK_KEY, '1'); location.reload(); };
+  }
+  // Карта бара из файла заведения: на розлив и в бутылке. Сорт в обеих группах (Efes) в базе один.
+  // Сорт без подбора (нет в каталоге, как Bud) открывает лист только с описанием. Гостю младше 21: как пришло из API.
+  function cardGroups() {
+    var card = copy && isObj(copy.card) ? copy.card : null, used = {}, both = {};
+    if (!card || minor) return drinks.length ? [{ title: '', rows: drinks.map(function (d) { return { name: d.brand_name || d.name, d: d }; }) }] : [];
+    list(card.draft).forEach(function (n) { if (list(card.bottle).indexOf(n) >= 0) both[n] = 1; });
+    var groups = [['draft', 'На розлив'], ['bottle', 'В бутылке']].map(function (g) {
+      return { key: g[0], title: g[1], rows: list(card[g[0]]).map(function (name) {
+        var d = drinkByName(name);
+        if (d) { used[d.id] = 1; return { name: name, d: d, volume: g[0] === 'bottle' && both[name] ? 'бутылка' : d.volume, both: !!both[name] }; }
+        return beerCopy(name).style ? { name: name } : null;
+      }).filter(Boolean) };
+    });
+    var rest = drinks.filter(function (d) { return !used[d.id]; }).map(function (d) { return { name: d.brand_name || d.name, d: d }; });
+    groups[0].rows = groups[0].rows.concat(rest);
+    return groups.filter(function (g) { return g.rows.length; });
+  }
+  // Лента бутылок под витриной: все сорта бара по разу, нажатие открывает лист сорта.
+  function beerStrip(groups) {
+    var seen = {}, tiles = '';
+    groups.forEach(function (g) {
+      g.rows.forEach(function (r) {
+        if (seen[r.name]) return; seen[r.name] = 1;
+        var rec = r.d ? asRec(r.d) : { brand_name: r.name }, info = beerCopy(r.name);
+        var tag = r.both ? 'розлив и бутылка' : g.key === 'bottle' ? 'бутылка' : g.key === 'draft' ? 'розлив' : '';
+        tiles += '<button type="button" class="vm-beer" data-drink-name="' + esc(r.name) + '">' +
+          stage(r.name, bottle(rec) + (tag ? '<span class="vm-beer-tag">' + esc(tag) + '</span>' : '')) +
+          '<span class="vm-beer-body"><span class="vm-beer-name">' + esc(beerName(r.name)) + '</span>' +
+          '<span class="vm-beer-line">' + esc(info.tagline || styleLine(rec)) + '</span></span></button>';
+      });
+    });
+    return '<div class="vm-beers-head"><h2>Пиво бара</h2><span class="text-xs text-muted">нажмите, чтобы узнать вкус</span></div>' +
+      '<div class="vm-beers" aria-label="Пиво бара">' + tiles + '</div>';
+  }
+  function pill(id, name, n) {
+    return '<button type="button" class="vm-pill' + (id === section ? ' active' : '') + '" data-pill="' + esc(id) + '" aria-pressed="' + (id === section) + '">' +
+      esc(name) + ' <span class="vm-pill-n">' + n + '</span></button>';
+  }
+  function dishCard(it, first) {
+    var dc = dishCopy(it), desc = dc.tagline || it.dish.description || '', comp = dc.tagline && it.dish.description ? it.dish.description : '';
+    var lead = minor ? null : recsOf(it)[0], present = gift(it.chef_note), photo = imgUrl(it.dish.image);
+    var portion = it.portion && title(it).indexOf(it.portion) < 0 ? it.portion : '';
+    var moods = list(dc.mood).slice(0, 2).map(function (m) { return '<span class="pill">' + esc(m[0]) + ' ' + esc(m[1]) + '</span>'; }).join('');
+    return '<article class="glass-card vm-dish" id="d-' + esc(it.id) + '">' +
+      '<div class="vm-dish-photo">' + (photo ? '<img src="' + esc(photo) + '" alt="" ' +
+        (first ? 'loading="eager" fetchpriority="high"' : 'loading="lazy"') + ' decoding="async">' : '') +
+      (present ? '<span class="vm-gift">🎁 <b>' + esc(present) + '</b> в подарок</span>' : '') + '</div>' +
+      '<div class="vm-dish-body"><div class="vm-item-head"><h3 class="vm-dish-name">' + esc(title(it)) + '</h3>' +
+      '<span class="vm-price">' + esc(money(it.price)) + '</span></div>' +
+      (moods || portion ? '<div class="vm-moods">' + (portion ? '<span class="pill">' + esc(portion) + '</span>' : '') + moods + '</div>' : '') +
+      (desc ? '<p class="vm-dish-desc text-dim">' + esc(desc) + '</p>' : '') +
+      (comp ? '<details class="vm-comp"><summary>Состав</summary><p>' + esc(comp) + '</p></details>' : '') +
+      (it.chef_note && !present ? '<p class="vm-chef">' + esc(it.chef_note) + '</p>' : '') +
+      '<div class="vm-actions"><button type="button" class="vm-rec-toggle" data-toggle="' + esc(it.id) + '" aria-expanded="false" aria-controls="p-' +
+      esc(it.id) + '">' + ICON.mug + 'Подобрать пиво' + ICON.chevron + '</button>' +
+      (lead ? '<button type="button" class="vm-hint" data-toggle="' + esc(it.id) + '" tabindex="-1" aria-hidden="true">' + bottle(lead) +
+        '<span>лучше с <b>' + esc(beerName(lead.brand_name)) + '</b></span></button>' : '') +
+      '</div></div><div class="vm-rec-panel" id="p-' + esc(it.id) + '" hidden></div></article>';
+  }
+  function drinkCard(name, d, volume) {
+    var rec = d ? asRec(d) : { brand_name: name }, info = beerCopy(name);
+    return '<button type="button" class="glass-card vm-drink" data-drink-name="' + esc(name) + '">' + stage(name, bottle(rec)) +
+      '<span class="vm-drink-body"><span class="vm-drink-name">' + esc(beerName(name)) + '</span>' +
+      (info.tagline ? '<span class="vm-drink-tag">' + esc(info.tagline) + '</span>' : '') +
+      '<span class="text-xs text-muted">' + esc([styleLine(rec), volume || (d ? d.volume : 'бутылка'), d ? money(d.price) : ''].filter(Boolean).join(' · ')) + '</span>' +
+      (info.note ? '<span class="vm-drink-note">' + esc(info.note) + '</span>' : '') +
+      '<span class="vm-link">Вкус и с чем подавать ' + ICON.arrow + '</span></span></button>';
+  }
+  $('main').addEventListener('click', function (e) {
+    var t = e.target.closest('[data-toggle],[data-pill],[data-drink-name],[data-rate],[data-send-rate]');
+    if (!t) return;
+    if (t.hasAttribute('data-toggle')) toggle(t.getAttribute('data-toggle'));
+    else if (t.hasAttribute('data-pill')) selectSection(t.getAttribute('data-pill'));
+    else if (t.hasAttribute('data-drink-name')) openDrink(t.getAttribute('data-drink-name'), t.getAttribute('data-from'), t);
+    else if (t.hasAttribute('data-rate')) rate(t.getAttribute('data-rate'), Number(t.getAttribute('data-r')));
+    else sendRate(t.getAttribute('data-send-rate'));
+  });
+  // Как в полном меню: раздел в полосе показывает только себя, «Все» возвращает всё меню.
+  function selectSection(id) {
+    section = id;
+    document.querySelectorAll('.vm-pill').forEach(function (p) {
+      var on = p.getAttribute('data-pill') === id; p.classList.toggle('active', on); p.setAttribute('aria-pressed', String(on));
+    });
+    var first = null;
+    document.querySelectorAll('.vm-section').forEach(function (s) {
+      var show = !id || s.getAttribute('data-section') === id; s.hidden = !show; if (show && !first) first = s;
+    });
+    var active = document.querySelector('.vm-pill.active'), nav = $('pills');
+    if (active && nav) nav.scrollTo({ left: Math.max(0, active.offsetLeft - (nav.clientWidth - active.offsetWidth) / 2), behavior: 'smooth' });
+    if (!first) return;
+    var top = first.getBoundingClientRect().top;
+    if (top < 130 || top > window.innerHeight - 120) first.scrollIntoView({ block: 'start' });
+  }
+
+  // ─── панель «Подобрать пиво» ───
+  function toggle(id) {
+    var it = items[id], panel = $('p-' + id); if (!it || !panel) return;
+    opened[id] = !opened[id];
+    var btn = document.querySelector('.vm-rec-toggle[data-toggle="' + id + '"]');
+    btn.classList.toggle('active', opened[id]); btn.setAttribute('aria-expanded', String(opened[id]));
+    panel.hidden = !opened[id];
+    if (!opened[id]) return;
+    renderPanel(it);
+    trackPairOpen(it);
+  }
+  function openPanel(id) {
+    var card = $('d-' + id); if (!card) return;
+    if (card.closest('.vm-section').hidden) selectSection('');
+    if (!opened[id]) toggle(id); else renderPanel(items[id]);
+    card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+  function trackPairOpen(it) {
+    if (openSent[it.id]) return;
+    openSent[it.id] = true;
+    var recs = recsOf(it), r = minor ? null : recs[0];
+    if (!r) { track('PAIR_OPEN', { menu_item: it.id, meta: { in_bar: false, age: minor ? 'under21' : undefined } }); return; }
+    track('PAIR_OPEN', { menu_item: it.id, menu_drink: r.menu_drink.id, rank: 1, source: r.source,
+      meta: { in_bar: true, score: r.compatibility_score, alts: recs.length - 1 } });
+  }
+  function renderPanel(it) {
+    var panel = $('p-' + it.id), recs = minor ? [] : recsOf(it);
+    if (!recs.length) {
+      panel.innerHTML = '<p class="vm-rec-none">' + (minor
+        ? 'Безалкогольных напитков в карте бара пока нет. Спросите официанта, что можно взять.'
+        : 'Сильной пары к этому блюду в карте бара нет. Спросите официанта, что есть похожего.') + '</p>';
+      return;
+    }
+    var r = recs[0], md = r.menu_drink || {}, why = whyOf(it, r), pc = pairCopy(it, r.brand_name), info = beerCopy(r.brand_name);
+    var fx = LAYERS.map(function (l, i) {
+      return pc[l[0]] ? '<li><span class="glass-ico t' + (i + 1) + '" aria-hidden="true"></span><span><b>' + l[2] + '</b>' + esc(pc[l[0]]) + '</span></li>' : '';
+    }).join('');
+    var h = '<div class="vm-rec-top"><span class="kicker">' + (r.curated || r.source === 'TEAM' ? 'Подбор команды Flavor Tree' : 'Подбор Flavor Tree') + '</span>' +
+      (LABELS[r.pairing_type] ? '<span class="badge">' + LABELS[r.pairing_type] + '</span>' : '') + '</div>' +
+      '<button type="button" class="vm-lead" data-drink-name="' + esc(r.brand_name) + '" data-from="' + esc(it.id) + '">' + stage(r.brand_name, bottle(r)) +
+      '<span class="vm-lead-body">' + (info.tagline ? '<span class="vm-lead-tag">' + esc(info.tagline) + '</span>' : '') +
+      '<span class="vm-lead-name">' + esc(beerName(r.brand_name)) + '</span>' +
+      '<span class="text-xs text-muted">' + esc([styleLine(r), md.volume, money(md.price)].filter(Boolean).join(' · ')) + '</span>' + pips(r.compatibility_score) + '</span></button>' +
+      (why || fx ? '<div class="vm-why"><span class="kicker">Почему это вкусно</span>' + (why ? '<p>' + esc(why) + '</p>' : '') +
+        (fx ? '<ul class="vm-fx">' + fx + '</ul>' : '') + '</div>' : '') +
+      '<button type="button" class="vm-link" data-drink-name="' + esc(r.brand_name) + '" data-from="' + esc(it.id) + '">Вкус ' + esc(beerName(r.brand_name)) +
+      ' по пирамиде ' + ICON.arrow + '</button>';
+    if (recs.length > 1) {
+      h += '<span class="kicker" style="color:var(--muted)">Ещё из карты бара</span><div class="vm-alts">' + recs.slice(1).map(function (a) {
+        return '<button type="button" class="vm-alt" data-drink-name="' + esc(a.brand_name) + '" data-from="' + esc(it.id) + '">' + stage(a.brand_name, bottle(a)) +
+          '<span class="vm-alt-body"><span class="vm-alt-name">' + esc(beerName(a.brand_name)) + '</span>' +
+          '<span class="text-xs text-muted">' + esc(beerCopy(a.brand_name).tagline || styleLine(a)) + '</span>' + pips(a.compatibility_score, true) + '</span></button>';
+      }).join('') + '</div>';
+    }
+    panel.innerHTML = h + rateHtml(it, r);
+  }
+
+  // ─── оценка пары: гость попробовал и ставит звёзды ───
+  function rateHtml(it, lead) {
+    if (offline) return '';
+    var o = rated[it.id] || { beer: lead.brand_name, rating: 0, sent: false };
+    if (o.sent) return '<div class="vm-rate"><p class="vm-thanks">Спасибо! Оценка пары записана.</p>' + surveyHtml() + '</div>';
+    var stars = '';
+    for (var n = 1; n <= 5; n++) {
+      stars += '<button type="button" class="vm-star' + (n <= o.rating ? ' on' : '') + '" data-rate="' + esc(it.id) + '" data-r="' + n +
+        '" aria-label="Оценка ' + n + ' из 5" aria-pressed="' + (n === o.rating) + '">' + ICON.star + '</button>';
+    }
+    return '<div class="vm-rate"><p class="vm-rate-title">Попробовали с ' + esc(beerName(o.beer)) + '? Как вам пара?</p>' +
+      '<div class="vm-stars">' + stars + '</div>' +
+      (o.rating ? '<div class="vm-rate-row"><input class="input" id="c-' + esc(it.id) + '" maxlength="500" placeholder="Пара слов, если хотите" aria-label="Комментарий">' +
+        '<button type="button" class="btn-amber" data-send-rate="' + esc(it.id) + '">Отправить</button></div>' : '') + '</div>';
+  }
+  function surveyHtml() {
+    return SURVEY_URL ? '<a class="btn-outline btn-block" href="' + esc(SURVEY_URL) + '" target="_blank" rel="noopener">Пройти короткую анкету</a>' : '';
+  }
+  function rate(id, n) {
+    var it = items[id], lead = it && recsOf(it)[0]; if (!lead) return;
+    var o = rated[id] = rated[id] || { beer: lead.brand_name, rating: 0, sent: false };
+    if (o.sent) return;
+    var comment = $('c-' + id) ? $('c-' + id).value : '';
+    o.rating = n; renderPanel(it);
+    if (comment && $('c-' + id)) $('c-' + id).value = comment;
+    var star = document.querySelector('[data-rate="' + id + '"][data-r="' + n + '"]'); if (star) star.focus({ preventScroll: true });
+  }
+  function sendRate(id) {
+    var o = rated[id], it = items[id]; if (!o || !it || !o.rating || o.sent) return;
+    var btn = document.querySelector('[data-send-rate="' + id + '"]'); btn.disabled = true; btn.textContent = 'Отправляем...';
+    post(API + '/feedback/', { session: session(), venue: slug, dish_ref: title(it), drink_ref: o.beer, rating: o.rating,
+      comment: (($('c-' + id) || {}).value || '').trim().slice(0, 500) })
+      .then(function (r) { if (!r.ok) throw new Error(r.status); o.sent = true; renderPanel(it); })
+      .catch(function () { btn.disabled = false; btn.textContent = 'Отправить'; toast('Не отправилось. Попробуйте ещё раз.'); });
+  }
+
+  // ─── лист сорта: почему к блюду, пирамида, кому подойдёт, с чем подавать ───
+  var drinkCtx = null;
+  function openDrink(name, fromId, opener) {
+    var d = drinkByName(name), info = beerCopy(name);
+    if (!d && !info.style) return;
+    var it = d && fromId ? items[fromId] : null, recs = it ? recsOf(it) : [];
+    var rec = recs.filter(function (r) { return r.brand_name === name; })[0] || (d ? asRec(d) : { brand_name: name });
+    drinkCtx = { rec: rec };
+    $('drink-scroll').innerHTML = drinkHtml(name, d, rec, it);
+    $('drink-scroll').scrollTop = 0;
+    openLayer($('drink-sheet'), opener);
+    if (d) brandInfo(d.brand).then(function (b) { if (drinkCtx && drinkCtx.rec === rec && $('bd-layers')) fillLayers(b, info.pyramid, it ? pairCopy(it, name) : {}); });
+    track('CATALOG_OPEN', { drink_ref: (d && d.brand) || name, menu_drink: d ? d.id : undefined, menu_item: it ? it.id : undefined, meta: { from: it ? 'dish' : 'drinks' } });
+  }
+  function drinkHtml(name, d, rec, it) {
+    var info = beerCopy(name), why = it ? whyOf(it, rec) : '';
+    var badges = [styleLine(rec), d ? d.volume : 'бутылка', d ? money(d.price) : ''].filter(Boolean);
+    var h = stage(name, bottle(rec), 'bd-stage') + '<div class="bd-body">' +
+      (info.tagline ? '<span class="kicker">' + esc(info.tagline) + '</span>' : '') +
+      '<h2 class="bd-name" id="bd-name">' + esc(beerName(name)) + '</h2>' +
+      '<div class="bd-badges">' + badges.map(function (x) { return '<span class="badge">' + esc(x) + '</span>'; }).join('') + '</div>' +
+      (info.note ? '<p class="bd-note">' + esc(info.note) + '</p>' : '') + '<p class="bd-desc" id="bd-desc" hidden></p>' +
+      (list(info.assoc).length ? '<div class="bd-assoc">' + list(info.assoc).map(function (a) { return '<span class="pill">' + esc(a[0]) + ' ' + esc(a[1]) + '</span>'; }).join('') + '</div>' : '');
+    if (it) {
+      h += '<div class="bd-why"><div class="bd-duo"><span class="bd-duo-pics">' + dishImg(it) + bottle(rec) + '</span><div>' +
+        '<span class="kicker">Почему к этому блюду</span><span class="bd-duo-title">' + esc(title(it)) + ' и ' + esc(beerName(name)) + '</span></div></div>' +
+        (rec.compatibility_score ? pips(rec.compatibility_score) : '') + (why ? '<p>' + esc(why) + '</p>' : '') + '</div>';
+    }
+    if (!d) return h + '<p class="bd-desc" style="margin-top:20px">Этот сорт есть в баре, пары к блюдам для него команда ещё подбирает.</p></div>';
+    h += '<h3 class="bd-h">Вкус по пирамиде</h3><div id="bd-layers">' + tiersHtml({}, it ? pairCopy(it, name) : {}) + '</div>';
+    if (list(info.who).length) h += '<h3 class="bd-h">Кому подойдёт</h3><ul class="bd-who">' + list(info.who).map(function (w) { return '<li>' + esc(w) + '</li>'; }).join('') + '</ul>';
+    h += '<h3 class="bd-h">С чем подавать</h3><div class="bd-pairs">' + rankedFor(name).map(function (row) {
+      var text = pairCopy(row.item, name).why || '';
+      return '<button type="button" class="glass-card bd-pair" data-pair-dish="' + esc(row.item.id) + '">' + (dishImg(row.item) || '<span></span>') +
+        '<span>' + (row.lead ? '<span class="badge">Пара команды</span>' : '') + '<span class="bd-pair-name">' + esc(title(row.item)) + '</span>' +
+        (text ? '<span class="bd-pair-why">' + esc(text) + '</span>' : '') + '</span></button>';
+    }).join('') + '</div>';
+    return h + '</div>';
+  }
+  // Три слоя бокала: ноты сорта, слова сомелье и что слой делает с этим блюдом.
+  function tiersHtml(pyr, pc) {
+    return LAYERS.map(function (l, i) {
+      var notes = list(pyr[l[0]]), som = notes.map(function (n) { return n.sommelier_note; }).filter(Boolean)[0];
+      return '<div class="tier" style="--i:' + i + '"><div class="shape t' + (i + 1) + '"></div><div class="tier-body">' +
+        '<div class="tier-k"><b>' + l[1] + '</b> · ' + l[2] + '</div>' +
+        (notes.length ? '<div class="notes">' + notes.map(function (n) {
+          var lvl = Math.max(0, Math.min(10, Number(n.intensity) || 0)) * 10;
+          return '<span class="pill">' + esc(n.icon || '') + ' ' + esc(n.name) + ' <span class="lvl"><i style="width:' + lvl + '%"></i></span></span>';
+        }).join('') + '</div>' : '') +
+        (som ? '<p class="tier-som">«' + esc(som) + '»</p>' : '') +
+        (pc[l[0]] ? '<p class="tier-fx">' + esc(pc[l[0]]) + '</p>' : '') + '</div></div>';
+    }).join('');
+  }
+  function fillLayers(b, fallback, pc) {
+    var p = b && isObj(b.pyramid) && (list(b.pyramid.top).length || list(b.pyramid.heart).length) ? b.pyramid : isObj(fallback) ? fallback : {};
+    $('bd-layers').innerHTML = tiersHtml(p, pc);
+    if (b && b.description && $('bd-desc')) { $('bd-desc').textContent = b.description; $('bd-desc').hidden = false; }
+  }
+  // Блюда к сорту: сначала те, где он пара команды, дальше по баллу движка.
+  function rankedFor(beer) {
+    var d = drinkByName(beer), id = d && String(d.id);
+    return itemList.map(function (item) {
+      var first = recsOf(item)[0], isLead = !!first && first.brand_name === beer && first.source === 'TEAM';
+      var score = item.drink_scores && id ? item.drink_scores[id] : undefined;
+      return { item: item, lead: isLead, score: typeof score === 'number' ? score : -1 };
+    }).sort(function (a, b) { return (b.lead - a.lead) || (b.score - a.score); }).slice(0, 6);
+  }
+  $('drink-scroll').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-pair-dish]'); if (!b) return;
+    var id = b.getAttribute('data-pair-dish'); closeAll(); setTimeout(function () { openPanel(id); }, 60);
+  });
+
+  // ─── сомелье ───
+  var chat = [], safety = [], busy = false;
+  function renderChips() {
+    $('ai-chips').innerHTML = list(copy && copy.moods).map(function (m) {
+      return '<button type="button" class="ai-chip" data-mood="' + esc(m.id) + '">' + esc(m.emoji) + ' ' + esc(m.label) + '</button>';
+    }).join('');
+  }
+  $('ai-chips').addEventListener('click', function (e) { var b = e.target.closest('[data-mood]'); if (b) askMood(b.getAttribute('data-mood')); });
+  $('ai-fab').addEventListener('click', function () { openLayer($('ai-sheet'), $('ai-fab')); });
+  function bubble(cls, html) {
+    var el = document.createElement('div'); el.className = 'ai-msg ' + cls; el.innerHTML = html;
+    $('thread').appendChild(el); el.scrollIntoView({ block: 'end', behavior: 'smooth' });
+    return el;
+  }
+  function cardHtml(item, beer) {
+    var d = beer && drinkByName(beer), rec = d ? (recsOf(item).filter(function (r) { return r.brand_name === beer; })[0] || asRec(d)) : recsOf(item)[0];
+    var text = rec ? whyOf(item, rec) : '';
+    return '<button type="button" class="ai-card" data-sid="' + esc(item.id) + '" data-sbeer="' + esc(rec ? rec.brand_name : '') + '">' +
+      (dishImg(item, 'dimg') || '<span class="dimg">' + ICON.mug + '</span>') + '<span><span class="ai-card-kind">' + (rec ? 'Пара' : 'Блюдо') + '</span>' +
+      '<span class="ai-card-title">' + esc(title(item)) + (rec ? ' + ' + esc(beerName(rec.brand_name)) : '') + '</span>' +
+      (text ? '<span class="ai-card-reason">' + esc(text) + '</span>' : '') + '</span>' + (rec ? bottle(rec, 'bimg') : '<span></span>') + '</button>';
+  }
+  function beerCardHtml(name) {
+    var info = beerCopy(name);
+    return '<button type="button" class="ai-card" data-sdrink="' + esc(name) + '"><span class="dimg">' + ICON.mug + '</span>' +
+      '<span><span class="ai-card-kind">Сорт</span><span class="ai-card-title">' + esc(beerName(name)) + '</span>' +
+      '<span class="ai-card-reason">' + esc(info.note || 'Показать, к чему подходит') + '</span></span>' + bottle(asRec(drinkByName(name)), 'bimg') + '</button>';
+  }
+  $('thread').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-sid],[data-sdrink]'); if (!b) return;
+    if (b.hasAttribute('data-sdrink')) { openDrink(b.getAttribute('data-sdrink'), null, b); return; }
+    var id = b.getAttribute('data-sid'), beer = b.getAttribute('data-sbeer');
+    if (beer) openDrink(beer, id, b); else { closeAll(); setTimeout(function () { openPanel(id); }, 60); }
+  });
+  // Настроения: пары команды Flavor Tree из файла заведения, ответ сразу и без сети.
+  function askMood(id) {
+    var m = list(copy && copy.moods).filter(function (x) { return x.id === id; })[0]; if (!m) return;
+    bubble('me', '<div class="ai-bubble">' + esc(m.emoji + ' ' + m.label) + '</div>');
+    var cards = list(m.picks).map(function (p) { var it = itemByKey(p[0]); return it ? cardHtml(it, p[1]) : ''; }).join('');
+    bubble('bot', '<div class="ai-bubble">' + esc(m.say) + '</div>' + cards);
+    chat.push({ role: 'user', content: m.label }, { role: 'assistant', content: m.say });
+    track('AI_ASK', { source: 'MOOD', meta: { mood: id } });
+  }
+  // Свой вопрос: отвечает ИИ-сомелье Flavor Tree (Claude или вкусовой движок, если ключа нет).
+  function askAi(text) {
+    text = String(text || '').trim().slice(0, 300);
+    if (!text || busy) return;
+    busy = true;
+    bubble('me', '<div class="ai-bubble">' + esc(text) + '</div>');
+    chat.push({ role: 'user', content: text });
+    var wait = bubble('bot', '<div class="ai-bubble ai-typing" role="status" aria-label="Сомелье печатает"><span></span><span></span><span></span></div>');
+    var req = offline ? Promise.reject(new Error('offline'))
+      : post(API + '/ai/sommelier/', { venue: slug, session: session(), table: table, messages: chat.slice(-AI_TURNS), safety_flags: safety });
+    req.then(function (r) { if (r.status === 429) throw new Error('limit'); if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then(function (data) {
+        wait.remove();
+        safety = list(data.safety_flags).slice(0, 12);
+        chat.push({ role: 'assistant', content: String(data.reply || '').slice(0, 1500) });
+        bubble('bot', '<div class="ai-bubble">' + esc(data.reply || '') + '</div>' + aiCards(list(data.suggestions)) +
+          (data.disclaimer ? '<p class="ai-note">' + esc(data.disclaimer) + '</p>' : ''));
+      })
+      .catch(function (e) {
+        wait.remove(); chat.pop();
+        bubble('bot', '<div class="ai-bubble">' + (e.message === 'limit' ? 'Много вопросов подряд. Давайте через минуту, а пока выберите настроение ниже.'
+          : 'Сейчас могу ответить только по настроению: выберите вариант ниже.') + '</div>');
+      })
+      .then(function () { busy = false; });
+  }
+  // Карточки из ответа: блюдо меню с сортом, который ИИ к нему предложил, иначе с парой команды; сорт без блюда открывает лист сорта.
+  function aiCards(suggestions) {
+    var beerFor = {}, seen = {}, out = '';
+    suggestions.forEach(function (s) { if (s.kind === 'DRINK' && s.pairs_with) beerFor[s.pairs_with] = s.title; });
+    suggestions.forEach(function (s) {
+      if (s.kind === 'DISH' && items[s.id] && !seen[s.id]) { seen[s.id] = 1; out += cardHtml(items[s.id], beerFor[s.id]); }
+      if (s.kind === 'DRINK' && !s.pairs_with && drinkByName(s.title) && !seen[s.title]) { seen[s.title] = 1; out += beerCardHtml(s.title); }
+    });
+    return out;
+  }
+  $('ai-form').addEventListener('submit', function (e) { e.preventDefault(); var v = $('ai-input').value; $('ai-input').value = ''; askAi(v); });
+
+  // Кнопка сомелье уходит, пока гость листает вниз, и возвращается при прокрутке вверх: не закрывает кнопки карточек.
+  var lastY = 0;
+  window.addEventListener('scroll', function () {
+    var y = window.scrollY;
+    if (Math.abs(y - lastY) > 12) { $('ai-fab').classList.toggle('away', y > lastY && y > 200); lastY = y; }
+  }, { passive: true });
+
+  copyReady.then(askAge);
+})();
+</script>
+</body>
+</html>
