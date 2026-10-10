@@ -185,6 +185,23 @@
   .vm-hint b { color: var(--foam-dim); font-weight: 700; }
   .vm-rec-toggle.active + .vm-hint { display: none; }
 
+  /* ── быстрый подбор (без скролла) ── */
+  .vm-quick { padding: 16px; margin-bottom: 18px; display: flex; flex-direction: column; gap: 12px; }
+  .vm-quick-head { display: flex; align-items: center; gap: 8px; color: var(--beer-deep); }
+  .vm-quick-head h2 { font: 800 1.08rem/1.2 var(--font-heading); color: var(--foam); }
+  .vm-quick-sub { font-size: 0.82rem; color: var(--muted); margin-top: -4px; }
+  .vm-quick-modes { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; background: var(--bg-2); border: 1px solid var(--line-subtle); border-radius: var(--radius-full); }
+  .vm-qmode { min-height: 42px; border: none; border-radius: var(--radius-full); background: transparent; color: var(--foam-dim); font: 600 0.9rem var(--font-body); cursor: pointer; transition: background 160ms var(--ease-out), color 160ms var(--ease-out), transform 120ms; }
+  .vm-qmode.active { background: var(--bg-1); color: var(--beer-deep); box-shadow: var(--shadow-warm); }
+  .vm-qmode:active { transform: scale(0.97); }
+  .vm-quick-row { display: flex; gap: 8px; }
+  .vm-qselect { flex: 1; min-width: 0; min-height: 52px; padding: 0 42px 0 16px; border: 1px solid var(--line); border-radius: var(--radius-lg); background-color: var(--bg-1); color: var(--foam); font: 600 1rem var(--font-body); cursor: pointer; -webkit-appearance: none; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%2392400E' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 15px center; }
+  .vm-qsurprise { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 52px; padding: 0 18px; border: 1px solid var(--beer-accent); border-radius: var(--radius-lg); background: linear-gradient(135deg, var(--beer-accent), var(--beer-light)); color: #fff; font: 700 0.95rem var(--font-heading); white-space: nowrap; cursor: pointer; box-shadow: var(--shadow-warm); transition: transform 120ms; }
+  .vm-qsurprise:active { transform: scale(0.96); }
+  @keyframes vmFlash { 0%, 100% { box-shadow: var(--shadow-warm); } 28% { box-shadow: 0 0 0 3px var(--beer-accent), var(--shadow-md); } }
+  .vm-dish.flash { animation: vmFlash 950ms var(--ease-out); }
+  @media (max-width: 360px) { .vm-quick-row { flex-direction: column; } .vm-qsurprise { width: 100%; } }
+
   /* ── панель подбора ── */
   .vm-rec-panel { display: flex; flex-direction: column; gap: 12px; padding: 14px 16px 16px; border-top: 1px solid var(--line-subtle);
     background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(180, 83, 9, 0.05)); animation: vmFade 250ms var(--ease-out); }
@@ -712,7 +729,7 @@
       main.innerHTML = h + '<div class="glass-card vm-empty"><p class="text-dim">Меню пока пустое.</p><p class="text-sm text-muted">Заведение ещё не добавило блюда.</p></div>';
       main.removeAttribute('aria-busy'); return;
     }
-    if (!minor && drinkRows) h += beerStrip(groups);
+    if (!minor && drinkRows) h += quickMatch(groups) + beerStrip(groups);
     h += '<nav class="vm-pills" id="pills" aria-label="Разделы меню">' + pill('', 'Все', itemList.length + drinkRows) +
       sections.map(function (s) { return pill(s.name, s.name, s.items.length); }).join('') +
       (drinkRows ? pill(DRINKS_SECTION, 'Напитки', drinkRows) : '') + '</nav>';
@@ -800,13 +817,19 @@
       '<span class="vm-link">Вкус и с чем подавать ' + ICON.arrow + '</span></span></button>';
   }
   $('main').addEventListener('click', function (e) {
-    var t = e.target.closest('[data-toggle],[data-pill],[data-drink-name],[data-rate],[data-send-rate]');
+    var t = e.target.closest('[data-toggle],[data-pill],[data-drink-name],[data-rate],[data-send-rate],[data-qmode],[data-qsurprise]');
     if (!t) return;
-    if (t.hasAttribute('data-toggle')) toggle(t.getAttribute('data-toggle'));
+    if (t.hasAttribute('data-qmode')) setQuickMode(t.getAttribute('data-qmode'));
+    else if (t.hasAttribute('data-qsurprise')) surprisePair();
+    else if (t.hasAttribute('data-toggle')) toggle(t.getAttribute('data-toggle'));
     else if (t.hasAttribute('data-pill')) selectSection(t.getAttribute('data-pill'));
     else if (t.hasAttribute('data-drink-name')) openDrink(t.getAttribute('data-drink-name'), t.getAttribute('data-from'), t);
     else if (t.hasAttribute('data-rate')) rate(t.getAttribute('data-rate'), Number(t.getAttribute('data-r')));
     else sendRate(t.getAttribute('data-send-rate'));
+  });
+  $('main').addEventListener('change', function (e) {
+    var s = e.target.closest('[data-qselect]'); if (!s || !s.value) return;
+    var v = s.value; s.selectedIndex = 0; quickPick(v);
   });
   // Как в полном меню: раздел в полосе показывает только себя, «Все» возвращает всё меню.
   function selectSection(id) {
@@ -823,6 +846,58 @@
     if (!first) return;
     var top = first.getBoundingClientRect().top;
     if (top < 130 || top > window.innerHeight - 120) first.scrollIntoView({ block: 'start' });
+  }
+
+  // ─── быстрый подбор: без листания, в обе стороны ───
+  var qMode = 'dish', qOpts = { dish: '', beer: '' };
+  function quickMatch(groups) {
+    qOpts.dish = itemList.filter(function (it) { return recsOf(it)[0]; })
+      .map(function (it) { return '<option value="' + esc(it.id) + '">' + esc(title(it)) + '</option>'; }).join('');
+    var seen = {};
+    qOpts.beer = (groups || []).reduce(function (acc, g) {
+      return acc + g.rows.map(function (r) {
+        if (seen[r.name] || !beerCopy(r.name).style && !r.d) return ''; seen[r.name] = 1;
+        return '<option value="' + esc(r.name) + '">' + esc(beerName(r.name)) + '</option>';
+      }).join('');
+    }, '');
+    if (!qOpts.dish && !qOpts.beer) return '';
+    return '<section class="glass-panel vm-quick" aria-label="Быстрый подбор">' +
+      '<div class="vm-quick-head">' + ICON.mug + '<h2>Быстрый подбор</h2></div>' +
+      '<p class="vm-quick-sub">Выберите — и сразу к паре, листать не нужно.</p>' +
+      '<div class="vm-quick-modes" role="tablist">' +
+      '<button type="button" class="vm-qmode active" data-qmode="dish" role="tab" aria-selected="true">Блюду → пиво</button>' +
+      '<button type="button" class="vm-qmode" data-qmode="beer" role="tab" aria-selected="false">Пиву → блюдо</button></div>' +
+      '<div class="vm-quick-row">' +
+      '<select class="vm-qselect" data-qselect aria-label="Выберите блюдо">' +
+      '<option value="" selected disabled>Выберите блюдо…</option>' + qOpts.dish + '</select>' +
+      '<button type="button" class="vm-qsurprise" data-qsurprise>🎲 Удиви меня</button></div></section>';
+  }
+  function setQuickMode(mode) {
+    if (mode !== 'dish' && mode !== 'beer') return;
+    qMode = mode;
+    document.querySelectorAll('.vm-qmode').forEach(function (b) {
+      var on = b.getAttribute('data-qmode') === mode; b.classList.toggle('active', on); b.setAttribute('aria-selected', String(on));
+    });
+    var s = document.querySelector('[data-qselect]'); if (!s) return;
+    var ph = mode === 'dish' ? 'Выберите блюдо…' : 'Выберите пиво…';
+    s.setAttribute('aria-label', mode === 'dish' ? 'Выберите блюдо' : 'Выберите пиво');
+    s.innerHTML = '<option value="" selected disabled>' + ph + '</option>' + (qOpts[mode] || '');
+  }
+  function quickPick(value) {
+    if (!value) return;
+    if (qMode === 'dish') openPanel(value);
+    else openDrink(value, null, document.querySelector('[data-qselect]'));
+  }
+  // «Удиви меня»: случайная сильная пара блюдо+пиво с всплывашкой и подсветкой карточки.
+  function surprisePair() {
+    var pool = itemList.filter(function (it) { return recsOf(it)[0]; });
+    if (!pool.length) return;
+    var it = pool[Math.floor(Math.random() * pool.length)], r = recsOf(it)[0];
+    toast('🎲 ' + title(it) + ' + ' + beerName(r.brand_name));
+    openPanel(it.id);
+    var card = $('d-' + it.id);
+    if (card) { card.classList.remove('flash'); void card.offsetWidth; card.classList.add('flash'); }
+    track('PAIR_OPEN', { menu_item: it.id, menu_drink: r.menu_drink && r.menu_drink.id, rank: 1, source: r.source, meta: { in_bar: true, surprise: true } });
   }
 
   // ─── панель «Подобрать пиво» ───
