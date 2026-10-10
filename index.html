@@ -83,9 +83,9 @@
     background: radial-gradient(circle at 50% 78%, color-mix(in srgb, var(--acc, #D97706) 30%, transparent), transparent 68%),
       linear-gradient(180deg, color-mix(in srgb, var(--acc, #D97706) 7%, #fff), color-mix(in srgb, var(--acc, #D97706) 14%, #fff)); }
   .pips { display: flex; align-items: center; gap: 5px; }
-  .pip { width: 22px; height: 6px; border-radius: var(--radius-full); background: rgba(180, 83, 9, 0.18); }
-  .pip.on { background: linear-gradient(90deg, var(--beer-accent), var(--beer-mid)); }
-  .pips-sm .pip { width: 12px; height: 5px; }
+  .pip { width: 11px; height: 11px; border-radius: 50%; background: rgba(180, 83, 9, 0.16); }
+  .pip.on { background: radial-gradient(circle at 35% 30%, var(--beer-accent), var(--beer-mid)); box-shadow: 0 1px 3px rgba(180, 83, 9, 0.28); }
+  .pips-sm .pip { width: 9px; height: 9px; }
   .pips-n { margin-left: 4px; font-size: 0.8rem; font-weight: 700; color: var(--beer-mid); }
 
   /* ── шапка Flavor Tree ── */
